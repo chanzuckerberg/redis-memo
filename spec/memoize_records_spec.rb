@@ -86,13 +86,15 @@ describe RedisMemo::MemoizeRecords do
   it 'requries active record' do
     expect {
       Class.new do
-        RedisMemo.memoize_records
+        extend RedisMemo::MemoizeRecords
+        memoize_records
       end
     }.to raise_error(RedisMemo::ArgumentError)
 
     expect {
       Class.new do
-        RedisMemo.memoize_table_column :site_id
+        extend RedisMemo::MemoizeRecords
+        memoize_table_column :site_id
       end
     }.to raise_error(RedisMemo::ArgumentError)
   end
@@ -293,7 +295,7 @@ describe RedisMemo::MemoizeRecords do
 
   it 'memoizes union queries' do
     expect_to_use_redis do
-      RedisMemoSpecModel.where(id: 1).union(RedisMemoSpecModel.where(id: 2)).to_a
+      RedisMemoSpecModel.where(id: 1).or(RedisMemoSpecModel.where(id: 2)).to_a
     end
   end
 

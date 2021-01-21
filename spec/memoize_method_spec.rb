@@ -5,14 +5,12 @@ describe RedisMemo::MemoizeMethod do
     klass = Class.new do
       extend RedisMemo::MemoizeMethod
 
-      T::Sig::WithoutRuntime.sig { returns(Integer) }
       def a
         1
       end
 
       memoize_method :a
 
-      T::Sig::WithoutRuntime.sig { returns(Integer) }
       def self.b
         2
       end
@@ -46,13 +44,6 @@ describe RedisMemo::MemoizeMethod do
 
       attr_accessor :calc_count
 
-      T::Sig::WithoutRuntime.sig do
-        params(
-          x: Integer,
-          y: Integer,
-          z: Integer,
-        ).returns(Integer)
-      end
       def calc(x, y:, z: 1)
         @calc_count += 1
         x + y + z
@@ -106,7 +97,6 @@ describe RedisMemo::MemoizeMethod do
 
       attr_accessor :calc_count
 
-      T::Sig::WithoutRuntime.sig { returns(Integer) }
       def calc
         @calc_count += 1
       end
@@ -128,7 +118,6 @@ describe RedisMemo::MemoizeMethod do
 
       attr_accessor :calc_count
 
-      T::Sig::WithoutRuntime.sig { returns(Integer) }
       def calc
         @calc_count += 1
       end
@@ -154,7 +143,6 @@ describe RedisMemo::MemoizeMethod do
       # fingerprint when needed
       class_variable_set(:@@section_fingerprint, Random.rand)
 
-      T::Sig::WithoutRuntime.sig { returns(Integer) }
       def fetch
         @query_count += 1
       end
