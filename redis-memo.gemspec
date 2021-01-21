@@ -14,6 +14,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = ['>= 2.5.0']
 
+  s.add_dependency 'activesupport'
   s.add_dependency 'redis', '~> 4'
 
   s.add_development_dependency 'codecov'
