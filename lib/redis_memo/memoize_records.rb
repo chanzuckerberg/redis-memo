@@ -1,4 +1,5 @@
-# typed: false
+# frozen_string_literal: true
+require_relative 'memoize_method'
 
 #
 # Automatically invalidate memoizable when modifying ActiveRecords objects.
@@ -6,6 +7,10 @@
 # update / delete (does not trigger record callbacks)
 #
 module RedisMemo::MemoizeRecords
+  require_relative 'memoize_records/cached_select'
+  require_relative 'memoize_records/invalidation'
+  require_relative 'memoize_records/model_callback'
+
   # TODO: MemoizeRecords -> MemoizeQuery
   def memoize_records
     RedisMemo::MemoizeRecords.using_active_record!(self)

@@ -1,4 +1,6 @@
-# typed: false
+# frozen_string_literal: true
+require_relative '../after_commit'
+require_relative '../cache'
 
 module RedisMemo::Memoizable::Invalidation
   # This is a thread safe data structure

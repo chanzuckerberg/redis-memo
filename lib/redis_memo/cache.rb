@@ -1,4 +1,7 @@
-# typed: false
+ # frozen_string_literal: true
+require_relative 'options'
+require_relative 'redis'
+
 class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   class Rescuable < Exception; end
 

@@ -1,4 +1,4 @@
-# typed: false
+# frozen_string_literal: true
 
 #
 # Inspect a SQL's AST to memoize SELECT statements

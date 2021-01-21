@@ -1,4 +1,5 @@
-# typed: false
+# frozen_string_literal: true
+
 class RedisMemo::Middleware
   def initialize(app)
     @app = app

@@ -1,6 +1,10 @@
-# typed: false
+# frozen_string_literal: true
+require 'securerandom'
 
 class RedisMemo::Memoizable
+  require_relative 'memoizable/dependency'
+  require_relative 'memoizable/invalidation'
+
   attr_accessor :props
   attr_reader :depends_on
 

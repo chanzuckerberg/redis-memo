@@ -1,4 +1,5 @@
-# typed: false
+# frozen_string_literal: true
+# TODO: -> RedisMemo::Memoizable::AfterCommit
 
 class RedisMemo::AfterCommit
   # We assume there's only one ActiveRecord DB connection used for opening

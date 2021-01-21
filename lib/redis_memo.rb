@@ -1,8 +1,11 @@
-# typed: true
+ # frozen_string_literal: true
+require 'active_support/all'
+require 'digest'
+require 'json'
 
 module RedisMemo
-  extend RedisMemo::MemoizeMethod
-  extend RedisMemo::MemoizeRecords
+  require 'redis_memo/memoize_method'
+  require 'redis_memo/memoize_records'
 
   DefaultOptions = RedisMemo::Options.new
 

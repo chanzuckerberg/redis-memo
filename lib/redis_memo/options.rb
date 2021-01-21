@@ -1,4 +1,5 @@
-# typed: false
+# frozen_string_literal: true
+
 class RedisMemo::Options
   def initialize(
     async: nil,

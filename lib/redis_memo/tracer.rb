@@ -1,4 +1,5 @@
-# typed: true
+# frozen_string_literal: true
+require_relative 'options'
 
 class RedisMemo::Tracer
   def self.trace(span_name, method_id, &blk)

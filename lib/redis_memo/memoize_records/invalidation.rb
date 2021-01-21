@@ -1,4 +1,4 @@
-# typed: false
+# frozen_string_literal: true
 
 class RedisMemo::MemoizeRecords::Invalidation
   def self.install(model_class)

@@ -1,4 +1,4 @@
-# typed: false
+# frozen_string_literal: true
 
 # A Directed Acyclic Graph (DAG) of Memoizables
 class RedisMemo::Memoizable::Dependency

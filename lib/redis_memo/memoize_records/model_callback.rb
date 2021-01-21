@@ -1,4 +1,4 @@
-# typed: false
+# frozen_string_literal: true
 
 class RedisMemo::MemoizeRecords::ModelCallback
   def self.install(model_class)

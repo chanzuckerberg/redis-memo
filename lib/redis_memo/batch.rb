@@ -1,4 +1,7 @@
-# typed: fals
+ # frozen_string_literal: true
+require_relative 'cache'
+require_relative 'tracer'
+
 class RedisMemo::Batch
   THREAD_KEY = :__redis_memo_current_batch__
 

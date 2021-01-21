@@ -1,4 +1,9 @@
-# typed: false
+# frozen_string_literal: true
+require_relative 'batch'
+require_relative 'future'
+require_relative 'memoizable'
+require_relative 'options'
+
 module RedisMemo::MemoizeMethod
   def memoize_method(method_name, **options, &depends_on)
     method_name_without_memo = :"_redis_memo_#{method_name}_without_memo"

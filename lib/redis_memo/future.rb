@@ -1,4 +1,7 @@
-# typed: false
+# frozen_string_literal: true
+require_relative 'cache'
+require_relative 'tracer'
+
 class RedisMemo::Future
   attr_writer :method_cache_key
 
