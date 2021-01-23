@@ -18,9 +18,10 @@ Gem::Specification.new do |s|
   s.add_dependency 'redis', '~> 4'
 
   s.add_development_dependency 'activerecord', '~> 5.2'
-  s.add_development_dependency 'pg'
   s.add_development_dependency 'codecov'
   s.add_development_dependency 'database_cleaner-active_record'
+  s.add_development_dependency 'pg'
+  s.add_development_dependency 'rake'
   s.add_development_dependency 'rspec', '~> 3.2'
   s.add_development_dependency 'simplecov'
 end
