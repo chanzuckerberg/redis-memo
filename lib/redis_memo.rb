@@ -1,4 +1,4 @@
- # frozen_string_literal: true
+# frozen_string_literal: true
 require 'active_support/all'
 require 'digest'
 require 'json'

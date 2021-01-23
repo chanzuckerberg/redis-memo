@@ -2,6 +2,7 @@
 require_relative 'batch'
 require_relative 'future'
 require_relative 'memoizable'
+require_relative 'middleware'
 require_relative 'options'
 
 module RedisMemo::MemoizeMethod
