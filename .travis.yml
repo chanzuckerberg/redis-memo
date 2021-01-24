@@ -15,3 +15,13 @@ before_install:
 - docker pull redis
 script:
 - bundle exec rake db:postgresql:reset test:postgresql
+deploy:
+  provider: rubygems
+  api_key:
+    secure: ZTq3W0zzbHsWP1QJQ0yf8NTqJP8tEm/vmMcRb+DL/Xs+EeZded4qI96Lh4RuL89oOf5/vAldVyq11I0ce3kz85cDHb6K/YzLlqks/4IJcsWnHKIEw6h6FWhLeuBt46TIWUZ8wBaqo2PUfoseJ0qs8ljXvZyoS0rAozLlMro5ktmDFH6Zaul+EURSoIeGT8fv8aeJMrOmLP0a3dSAD7TYSNNLfOrLHBjLUDnceiisihrAJUwbHaGy4BYU4jJFsci1o1mpuyXqZ3Kor3TtXqRLQryBt5KuB/VRcECFfMaiIkPzvQ6IlUo73RBimX1rdTyCutw8czrrc98ORkzeQ4uTBmG8bWX/HK6t2ZRvScGoCHesK4SBU2i0H0+NQ8JNe8e2n1xfo4mZ8aSGuHTjGqUoUQMywPGrKiIag5OQnctYZdtj9wmqwn3wEjDefZHJ9kP0pEle1Mj/NWTRsLHSFcBT2L4FHqTdHP8wQelAs59oHRTkDW7LQbtmYOxVyw68lu9DhD+mjFl5+BtC3Cv5hk8C2/QHq1OTKfV5k34cqFALBPjWG947q2GRu2cDgov/R/5UjJwSV5vW4AIZFjKaHAOaKk7jJx98G53qe4YFTxqEi6FRUaX0biF5xMhf0sEs1fRvIJxbFX0TgS7LCHYGrFqonvumkqOrDZyrd2h4FQe0vS4=
+  gem: redis-memo
+  on:
+    tags: true
+    repo: chanzuckerberg/redis-memo
+    branch: main
+  skip_cleanup: 'true'
