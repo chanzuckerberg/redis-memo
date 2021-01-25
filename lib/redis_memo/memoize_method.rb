@@ -6,7 +6,7 @@ require_relative 'middleware'
 require_relative 'options'
 
 module RedisMemo::MemoizeMethod
-  def memoize_method(method_name, **options, &depends_on)
+  def memoize_method(method_name, method_id: nil, **options, &depends_on)
     method_name_without_memo = :"_redis_memo_#{method_name}_without_memo"
     method_name_with_memo = :"_redis_memo_#{method_name}_with_memo"
 
@@ -17,7 +17,14 @@ module RedisMemo::MemoizeMethod
 
       future = RedisMemo::Future.new(
         self,
-        RedisMemo::MemoizeMethod.method_id(self, method_name),
+        case method_id
+        when NilClass
+          RedisMemo::MemoizeMethod.method_id(self, method_name)
+        when String, Symbol
+          method_id
+        else
+          method_id.call(self, *args)
+        end,
         args,
         depends_on,
         options,

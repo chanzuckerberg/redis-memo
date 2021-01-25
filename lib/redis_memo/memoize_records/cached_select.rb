@@ -96,7 +96,13 @@ class RedisMemo::MemoizeRecords::CachedSelect
     klass.class_eval do
       extend RedisMemo::MemoizeMethod
 
-      memoize_method :exec_query do |_, sql, name, binds, **kwargs|
+      memoize_method(
+        :exec_query,
+        method_id: proc do |_, sql, *args|
+          sql.gsub(/(\$\d+)/, '?')      # $1 -> ?
+             .gsub(/((, *)*\?)+/, '?')  # (?, ?, ? ...) -> (?)
+        end,
+      ) do |_, sql, name, binds, **kwargs|
         RedisMemo::MemoizeRecords::CachedSelect
           .current_query_bind_params
           .params
@@ -158,14 +164,7 @@ class RedisMemo::MemoizeRecords::CachedSelect
           }"
         )
 
-        RedisMemo::Tracer.trace(
-          'redis_memo.memoize_query',
-          args[0]
-            .gsub(/(\$\d+)/, '?') # $1 -> ?
-            .gsub(/((, *)*\?)+/, '?'), # (?, ?, ? ...) -> (?)
-        ) do
-          super(*args)
-        end
+        super(*args)
       else
         RedisMemo.without_memo { super(*args) }
       end
