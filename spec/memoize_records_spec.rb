@@ -1,8 +1,8 @@
 # typed: false
-describe RedisMemo::MemoizeRecords do
+describe RedisMemo::MemoizeQuery do
   class RedisMemoSpecModel < ActiveRecord::Base
     extend RedisMemo::MemoizeMethod
-    extend RedisMemo::MemoizeRecords
+    extend RedisMemo::MemoizeQuery
 
     enum my_enum: {x: 0, y: 1}
 
@@ -33,7 +33,7 @@ describe RedisMemo::MemoizeRecords do
       t.integer 'my_enum', default: 0
     end
 
-    RedisMemoSpecModel.memoize_records
+    RedisMemoSpecModel.memoize_table_column :id, editable: false
     RedisMemoSpecModel.memoize_table_column :a
     RedisMemoSpecModel.memoize_table_column :b
     RedisMemoSpecModel.memoize_table_column :my_enum
@@ -86,14 +86,14 @@ describe RedisMemo::MemoizeRecords do
   it 'requries active record' do
     expect {
       Class.new do
-        extend RedisMemo::MemoizeRecords
-        memoize_records
+        extend RedisMemo::MemoizeQuery
+        memoize_table_column :id
       end
     }.to raise_error(RedisMemo::ArgumentError)
 
     expect {
       Class.new do
-        extend RedisMemo::MemoizeRecords
+        extend RedisMemo::MemoizeQuery
         memoize_table_column :site_id
       end
     }.to raise_error(RedisMemo::ArgumentError)
@@ -268,17 +268,17 @@ describe RedisMemo::MemoizeRecords do
 
   it 'type casts to string' do
     memos = [
-      RedisMemo::MemoizeRecords.create_memo(RedisMemoSpecModel, a: '1', b: '1'),
-      RedisMemo::MemoizeRecords.create_memo(RedisMemoSpecModel, a: '1', b: '2'),
-      RedisMemo::MemoizeRecords.create_memo(RedisMemoSpecModel, b: 1, a: 1),
+      RedisMemo::MemoizeQuery.create_memo(RedisMemoSpecModel, a: '1', b: '1'),
+      RedisMemo::MemoizeQuery.create_memo(RedisMemoSpecModel, a: '1', b: '2'),
+      RedisMemo::MemoizeQuery.create_memo(RedisMemoSpecModel, b: 1, a: 1),
     ]
     expect(memos[0].cache_key).to_not eq(memos[1].cache_key)
     expect(memos[0].cache_key).to eq(memos[2].cache_key)
 
 
     expect(
-      RedisMemo::MemoizeRecords.create_memo(RedisMemoSpecModel, my_enum: 'x').cache_key
-    ).to eq(RedisMemo::MemoizeRecords.create_memo(RedisMemoSpecModel, my_enum: 0).cache_key)
+      RedisMemo::MemoizeQuery.create_memo(RedisMemoSpecModel, my_enum: 'x').cache_key
+    ).to eq(RedisMemo::MemoizeQuery.create_memo(RedisMemoSpecModel, my_enum: 0).cache_key)
   end
 
   it 'memoizes nested queries' do

@@ -5,7 +5,7 @@ require 'json'
 
 module RedisMemo
   require 'redis_memo/memoize_method'
-  require 'redis_memo/memoize_records'
+  require 'redis_memo/memoize_query'
 
   DefaultOptions = RedisMemo::Options.new
 

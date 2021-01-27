@@ -1,15 +1,20 @@
 # frozen_string_literal: true
 
-class RedisMemo::MemoizeRecords::Invalidation
+#
+# Automatically invalidate memoizable when modifying ActiveRecords objects.
+# You still need to invalidate memos when you are using SQL queries to perform
+# update / delete (does not trigger record callbacks)
+#
+class RedisMemo::MemoizeQuery::Invalidation
   def self.install(model_class)
-    var_name = :@@__redis_memo_memoize_records_invalidation_installed__
+    var_name = :@@__redis_memo_memoize_query_invalidation_installed__
     return if model_class.class_variable_defined?(var_name)
 
     model_class.class_eval do
       # A memory-persistent memoizable used for invalidating all queries of a
       # particular model
       def self.redis_memo_class_memoizable
-        @redis_memo_class_memoizable ||= RedisMemo::MemoizeRecords.create_memo(self)
+        @redis_memo_class_memoizable ||= RedisMemo::MemoizeQuery.create_memo(self)
       end
 
       %i(delete decrement! increment!).each do |method_name|
@@ -18,7 +23,7 @@ class RedisMemo::MemoizeRecords::Invalidation
         define_method method_name do |*args|
           result = send(:"without_redis_memo_invalidation_#{method_name}", *args)
 
-          RedisMemo::MemoizeRecords.invalidate(self)
+          RedisMemo::MemoizeQuery.invalidate(self)
 
           result
         end
@@ -77,7 +82,7 @@ class RedisMemo::MemoizeRecords::Invalidation
 
       define_method method_name do |*args|
         result = send(:"#{method_name}_without_redis_memo_invalidation", *args)
-        RedisMemo::MemoizeRecords.invalidate_all(model_class)
+        RedisMemo::MemoizeQuery.invalidate_all(model_class)
         result
       end
     end

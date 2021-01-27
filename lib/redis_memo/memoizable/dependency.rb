@@ -16,7 +16,7 @@ class RedisMemo::Memoizable::Dependency
     if !memo_or_model.is_a?(RedisMemo::Memoizable)
       [
         memo_or_model.redis_memo_class_memoizable,
-        RedisMemo::MemoizeRecords.create_memo(memo_or_model, **conditions),
+        RedisMemo::MemoizeQuery.create_memo(memo_or_model, **conditions),
       ].each do |memo|
         nodes[memo.cache_key] = memo
       end
