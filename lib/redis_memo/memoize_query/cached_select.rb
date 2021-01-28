@@ -38,7 +38,7 @@
 # the `memoize_table_column` declaration on the model class.
 #
 #     class MyRecord < ApplicationRecord
-#       extend RedisMemo::MemoizeRecords
+#       extend RedisMemo::MemoizeQuery
 #       memoize_table_column :value
 #     end
 #
@@ -87,8 +87,11 @@
 #
 # See +extract_bind_params+ for the precise detection logic.
 #
-class RedisMemo::MemoizeRecords::CachedSelect
-  # TODO: merge this into RedisMemo::MemoizeQuery
+class RedisMemo::MemoizeQuery::CachedSelect
+  require_relative 'cached_select/bind_params'
+  require_relative 'cached_select/connection_adapter'
+  require_relative 'cached_select/statement_cache'
+
   def self.install(connection)
     klass = connection.class
     return if klass.singleton_class < RedisMemo::MemoizeMethod
@@ -103,7 +106,7 @@ class RedisMemo::MemoizeRecords::CachedSelect
              .gsub(/((, *)*\?)+/, '?')  # (?, ?, ? ...) -> (?)
         end,
       ) do |_, sql, name, binds, **kwargs|
-        RedisMemo::MemoizeRecords::CachedSelect
+        RedisMemo::MemoizeQuery::CachedSelect
           .current_query_bind_params
           .params
           .each do |model, attrs_set|
@@ -113,8 +116,8 @@ class RedisMemo::MemoizeRecords::CachedSelect
           end
 
         depends_on RedisMemo::Memoizable.new(
-          __redis_memo_memoize_records_memoize_query_sql__: sql,
-          __redis_memo_memoize_records_memoize_query_binds__: binds.map(&:value_for_database),
+          __redis_memo_memoize_query_memoize_query_sql__: sql,
+          __redis_memo_memoize_query_memoize_query_binds__: binds.map(&:value_for_database),
         )
       end
     end
@@ -140,57 +143,6 @@ class RedisMemo::MemoizeRecords::CachedSelect
         end
         ret
       end
-    end
-  end
-
-  module ConnectionAdapter
-    def cacheable_query(*args)
-      query, binds = super(*args)
-
-      # Persist the arel object to StatementCache#execute
-      query.instance_variable_set(:@__redis_memo_memoize_records_memoize_query_arel, args.last)
-
-      [query, binds]
-    end
-
-    def exec_query(*args)
-      # An Arel AST in Thread local is set prior to supported query methods
-      if !RedisMemo.without_memo? &&
-          RedisMemo::MemoizeRecords::CachedSelect.extract_bind_params(args[0])
-        # [Reids $model Load] $sql $binds
-        RedisMemo::DefaultOptions.logger&.info(
-          "[Redis] \u001b[36;1m#{args[1]} \u001b[34;1m#{args[0]}\u001b[0m #{
-            args[2].map { |bind| [bind.name, bind.value_for_database]}
-          }"
-        )
-
-        super(*args)
-      else
-        RedisMemo.without_memo { super(*args) }
-      end
-    end
-
-    def select_all(*args)
-      if args[0].is_a?(Arel::SelectManager)
-        RedisMemo::MemoizeRecords::CachedSelect.current_query = args[0]
-      end
-
-      super(*args)
-    ensure
-      RedisMemo::MemoizeRecords::CachedSelect.reset_current_query
-    end
-  end
-
-  module StatementCache
-    def execute(*args)
-      arel = query_builder.instance_variable_get(:@__redis_memo_memoize_records_memoize_query_arel)
-      RedisMemo::MemoizeRecords::CachedSelect.current_query = arel
-      RedisMemo::MemoizeRecords::CachedSelect.current_substitutes =
-        bind_map.map_substitutes(args[0])
-
-      super(*args)
-    ensure
-      RedisMemo::MemoizeRecords::CachedSelect.reset_current_query
     end
   end
 
@@ -367,132 +319,8 @@ class RedisMemo::MemoizeRecords::CachedSelect
     end
   end
 
-  class BindParams
-    def params
-      #
-      # Bind params is hash of sets: each key is a model class, each value is a
-      # set of hashes for memoized column conditions. Example:
-      #
-      #   {
-      #      Site => [
-      #        {name: 'a', city: 'b'},
-      #        {name: 'a', city: 'c'},
-      #        {name: 'b', city: 'b'},
-      #        {name: 'b', city: 'c'},
-      #      ],
-      #   }
-      #
-      @params ||= Hash.new do |models, model|
-        models[model] = []
-      end
-    end
-
-    def union(other)
-      return unless other
-
-      # The tree is almost always right-heavy. Merge into the right node for better
-      # performance.
-      other.params.merge!(params) do |_, other_attrs_set, attrs_set|
-        if other_attrs_set.empty?
-          attrs_set
-        elsif attrs_set.empty?
-          other_attrs_set
-        else
-          attrs_set + other_attrs_set
-        end
-      end
-
-      other
-    end
-
-    def product(other)
-      #  Example:
-      #
-      #  and(
-      #    [{a: 1}, {a: 2}],
-      #    [{b: 1}, {b: 2}],
-      #  )
-      #
-      #  =>
-      #
-      #  [
-      #    {a: 1, b: 1},
-      #    {a: 1, b: 2},
-      #    {a: 2, b: 1},
-      #    {a: 2, b: 2},
-      #  ]
-      return unless other
-
-      # The tree is almost always right-heavy. Merge into the right node for better
-      # performance.
-      params.each do |model, attrs_set|
-        next if attrs_set.empty?
-
-        # The other model does not have any conditions so far: carry the
-        # attributes over to the other node
-        if other.params[model].empty?
-          other.params[model] = attrs_set
-          next
-        end
-
-        # Distribute the current attrs into the other
-        other_attrs_set_size = other.params[model].size
-        other_attrs_set = other.params[model]
-        merged_attrs_set = Array.new(other_attrs_set_size * attrs_set.size)
-
-        attrs_set.each_with_index do |attrs, i|
-          other_attrs_set.each_with_index do |other_attrs, j|
-            k = i * other_attrs_set_size + j
-            merged_attrs = merged_attrs_set[k] = other_attrs.dup
-            attrs.each do |name, val|
-              # Conflict detected. For example:
-              #
-              #   (a = 1 or b = 1) and (a = 2 or b = 2)
-              #
-              #  Keep:     a = 1 and b = 2, a = 2 and b = 1
-              #  Discard:  a = 1 and a = 2, b = 1 and b = 2
-              if merged_attrs.include?(name) && merged_attrs[name] != val
-                merged_attrs_set[k] = nil
-                break
-              end
-
-              merged_attrs[name] = val
-            end
-          end
-        end
-
-        merged_attrs_set.compact!
-        other.params[model] = merged_attrs_set
-      end
-
-      other
-    end
-
-    def uniq!
-      params.each do |_, attrs_set|
-        attrs_set.uniq!
-      end
-    end
-
-    def memoizable?
-      return false if params.empty?
-
-      params.each do |model, attrs_set|
-        return false if attrs_set.empty?
-
-        attrs_set.each do |attrs|
-          return false unless RedisMemo::MemoizeRecords
-            .memoized_columns(model)
-            .include?(attrs.keys.sort)
-        end
-      end
-
-      true
-    end
-  end
-
   # Thread locals to exchange information between RedisMemo and ActiveRecord
-  THREAD_KEY_AREL = :__redis_memo_memoize_records_cached_select_arel__
-  THREAD_KEY_SUBSTITUTES = :__redis_memo_memoize_records_cached_select_substitues__
-  THREAD_KEY_AREL_BIND_PARAMS = :__redis_memo_memoize_records_cached_select_arel_bind_params__
+  THREAD_KEY_AREL = :__redis_memo_memoize_query_cached_select_arel__
+  THREAD_KEY_SUBSTITUTES = :__redis_memo_memoize_query_cached_select_substitues__
+  THREAD_KEY_AREL_BIND_PARAMS = :__redis_memo_memoize_query_cached_select_arel_bind_params__
 end

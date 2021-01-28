@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class RedisMemo::MemoizeRecords::ModelCallback
+class RedisMemo::MemoizeQuery::ModelCallback
   def self.install(model_class)
     var_name = :@@__redis_memo_memoize_record_after_save_callback_installed__
     return if model_class.class_variable_defined?(var_name)
@@ -12,10 +12,10 @@ class RedisMemo::MemoizeRecords::ModelCallback
   end
 
   def after_save(record)
-    RedisMemo::MemoizeRecords.invalidate(record)
+    RedisMemo::MemoizeQuery.invalidate(record)
   end
 
   def after_destroy(record)
-    RedisMemo::MemoizeRecords.invalidate(record)
+    RedisMemo::MemoizeQuery.invalidate(record)
   end
 end
