@@ -26,6 +26,7 @@ if defined?(ActiveRecord)
         RedisMemo::MemoizeQuery::CachedSelect.install(ActiveRecord::Base.connection)
       end
 
+      # The code below might fail due to missing DB/table errors
       columns.each do |column|
         unless self.columns_hash.include?(column.to_s)
           raise(
@@ -34,6 +35,8 @@ if defined?(ActiveRecord)
           )
         end
       end
+
+      RedisMemo::MemoizeQuery.memoized_models[self.table_name] = self
     rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
       # no-opts: models with memoize_table_column decleared might be loaded in
       # rake tasks that are used to create databases
@@ -50,6 +53,12 @@ if defined?(ActiveRecord)
     def self.memoized_columns(model_or_table, editable_only: false)
       table = model_or_table.is_a?(Class) ? model_or_table.table_name : model_or_table
       @@memoized_columns[table.to_sym][editable_only ? 1 : 0]
+    end
+
+    @@memoized_models = {}
+
+    def self.memoized_models
+      @@memoized_models
     end
 
     # extra_props are considered as AND conditions on the model class
