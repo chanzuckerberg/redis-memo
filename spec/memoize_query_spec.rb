@@ -321,9 +321,9 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  it 'memoizes queries with JOIN conditions' do
+  it 'does not memoize queries with JOIN conditions' do
     teacher = Teacher.create!
-    expect_to_use_redis do
+    expect_not_to_use_redis do
       teacher.sites.where(a: 1).to_a
     end
   end
