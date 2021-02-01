@@ -98,6 +98,80 @@ describe RedisMemo::Memoizable::Invalidation do
         5.times { obj.calc(1) }
       }.to change { obj.calc_count }.by(1)
     end
+
+    it 'pulls in dependencies defined by other methods' do
+      klass = Class.new do
+        extend RedisMemo::MemoizeMethod
+  
+        attr_accessor :calc_count
+  
+        def calc(x)
+          @calc_count += 1
+        end
+  
+        def calc_b_c(x)
+          @calc_count += 1
+        end
+
+        memoize_method :calc_b_c do |_, x|
+          depends_on RedisMemoSpecDAG.b(x)
+          depends_on RedisMemoSpecDAG.c(x)
+        end
+
+        memoize_method :calc do |obj, x|
+          depends_on obj.dependency_of(:calc_b_c, x)
+          depends_on RedisMemo::Memoizable.new(val: x)
+        end
+      end
+
+      obj = klass.new
+      obj.calc_count = 0
+      val = 0
+      [
+        RedisMemoSpecDAG.a(val),
+        RedisMemoSpecDAG.b(val),
+        RedisMemoSpecDAG.c(val),
+        RedisMemo::Memoizable.new(val: val)
+      ].each do |memo|
+        expect {
+          RedisMemo::Memoizable.invalidate([memo])
+          5.times { obj.calc(val) }
+        }.to change { obj.calc_count }.by(1)
+      end
+    end
+
+    it 'raises an error when it depends on a non-memoized method' do
+      klass = Class.new do
+        extend RedisMemo::MemoizeMethod
+
+        def non_memoized_method(x); end
+        def calc(x); end
+
+        memoize_method :calc do |obj, x|
+          depends_on obj.dependency_of(:non_memoized_method, x)
+        end
+      end
+      obj = klass.new
+      expect {
+        obj.calc(0)
+      }.to raise_error(RedisMemo::ArgumentError)
+    end
+
+    it 'raises an error when passed an invalid dependency' do
+      klass = Class.new do
+        extend RedisMemo::MemoizeMethod
+
+        def calc(x); end
+
+        memoize_method :calc do |obj, x|
+          depends_on Class.new
+        end
+      end
+      obj = klass.new
+      expect {
+        obj.calc(0)
+      }.to raise_error(RedisMemo::ArgumentError)
+    end
   end
 
   context 'with a directed cyclic graph' do

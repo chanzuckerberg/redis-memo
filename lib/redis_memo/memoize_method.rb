@@ -40,6 +40,24 @@ module RedisMemo::MemoizeMethod
     end
 
     alias_method method_name, method_name_with_memo
+
+    @memoized_dependencies ||= Hash.new
+    @memoized_dependencies[method_name] = depends_on
+
+    define_method :dependency_of do |method_name, *method_args|
+      self.class.dependency_of(method_name, *method_args)
+    end
+  end
+
+  def dependency_of(method_name, *method_args)
+    depends_on = @memoized_dependencies[method_name]
+    unless depends_on
+      raise(
+        RedisMemo::ArgumentError,
+        "#{method_name} is not a memoized method"
+      )
+    end
+    RedisMemo::MemoizeMethod.extract_dependencies(self, *method_args, &depends_on)
   end
 
   def self.method_id(ref, method_name)
@@ -49,15 +67,19 @@ module RedisMemo::MemoizeMethod
     "#{class_name}#{is_class_method ? '::' : '#'}#{method_name}"
   end
 
+  def self.extract_dependencies(ref, *method_args, &depends_on)
+    dependency = RedisMemo::Memoizable::Dependency.new
+
+    # Resolve the dependency recursively
+    dependency.instance_exec(ref, *method_args, &depends_on)
+    dependency
+  end
+
   def self.method_cache_keys(future_contexts)
     memos = Array.new(future_contexts.size)
     future_contexts.each_with_index do |(ref, _, method_args, depends_on), i|
       if depends_on
-        dependency = RedisMemo::Memoizable::Dependency.new
-
-        # Resolve the dependency recursively
-        dependency.instance_exec(ref, *method_args, &depends_on)
-
+        dependency = extract_dependencies(ref, *method_args, &depends_on)
         memos[i] = dependency.memos
       end
     end

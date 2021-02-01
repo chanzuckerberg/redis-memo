@@ -44,9 +44,13 @@ if defined?(ActiveRecord)
     end
 
     def self.using_active_record!(model_class)
-      unless model_class.respond_to?(:<) && model_class < ActiveRecord::Base
+      unless using_active_record?(model_class)
         raise RedisMemo::ArgumentError, "'#{model_class.name}' does not use ActiveRecord"
       end
+    end
+
+    def self.using_active_record?(model_class)
+      model_class.respond_to?(:<) && model_class < ActiveRecord::Base
     end
 
     @@memoized_columns = Hash.new { |h, k| h[k] = [Set.new, Set.new] }
