@@ -119,7 +119,7 @@ describe RedisMemo::Memoizable::Invalidation do
         end
 
         memoize_method :calc do |obj, x|
-          depends_on obj.memoized_dependencies(:calc_b_c, x)
+          depends_on obj.dependency_of(:calc_b_c, x)
           depends_on RedisMemo::Memoizable.new(val: x)
         end
       end
@@ -148,7 +148,7 @@ describe RedisMemo::Memoizable::Invalidation do
         def calc(x); end
 
         memoize_method :calc do |obj, x|
-          depends_on obj.memoized_dependencies(:non_memoized_method, x)
+          depends_on obj.dependency_of(:non_memoized_method, x)
         end
       end
       obj = klass.new

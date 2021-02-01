@@ -44,12 +44,12 @@ module RedisMemo::MemoizeMethod
     @memoized_dependencies ||= Hash.new
     @memoized_dependencies[method_name] = depends_on
 
-    define_method :memoized_dependencies do |method_name, *method_args|
-      self.class.memoized_dependencies(method_name, *method_args)
+    define_method :dependency_of do |method_name, *method_args|
+      self.class.dependency_of(method_name, *method_args)
     end
   end
 
-  def memoized_dependencies(method_name, *method_args)
+  def dependency_of(method_name, *method_args)
     depends_on = @memoized_dependencies[method_name]
     unless depends_on
       raise(
