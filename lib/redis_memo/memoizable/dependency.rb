@@ -33,7 +33,10 @@ class RedisMemo::Memoizable::Dependency
         nodes[memo.cache_key] = memo
       end
     else
-      raise RedisMemo::ArgumentError, "Invalid dependency type #{dependency.class}"
+      raise(
+        RedisMemo::ArgumentError,
+        "Invalid dependency type #{dependency.class}"
+      )
     end
   end
 end

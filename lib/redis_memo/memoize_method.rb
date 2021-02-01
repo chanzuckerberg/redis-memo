@@ -43,11 +43,20 @@ module RedisMemo::MemoizeMethod
 
     @memoized_dependencies ||= Hash.new
     @memoized_dependencies[method_name] = depends_on
+
+    define_method :memoized_dependencies do |method_name, *method_args|
+      self.class.memoized_dependencies(method_name, *method_args)
+    end
   end
 
   def memoized_dependencies(method_name, *method_args)
     depends_on = @memoized_dependencies[method_name]
-    raise RedisMemo::ArgumentError "#{method_name} is not a memoized method" unless depends_on
+    unless depends_on
+      raise(
+        RedisMemo::ArgumentError,
+        "#{method_name} is not a memoized method"
+      )
+    end
     dependency = RedisMemo::Memoizable::Dependency.new
     dependency.instance_exec(self, *method_args, &depends_on)
     dependency
