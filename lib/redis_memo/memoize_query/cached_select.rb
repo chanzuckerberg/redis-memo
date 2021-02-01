@@ -252,6 +252,9 @@ class RedisMemo::MemoizeQuery::CachedSelect
       return unless node.orders.empty?
 
       node.cores.each do |core|
+        # We don't support JOINs
+        return unless core.source.right.empty?
+
         # Should have a WHERE if directly selecting from a table
         source_node = core.source.left
         binding_relation = nil
@@ -307,7 +310,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
 
       bind_params
-    when Arel::Nodes::Join, Arel::Nodes::Union, Arel::Nodes::Or
+    when Arel::Nodes::Union, Arel::Nodes::Or
       [node.left, node.right].each do |child|
         bind_params = bind_params.union(
           extract_bind_params_recurse(child)
