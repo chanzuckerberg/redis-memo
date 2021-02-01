@@ -13,7 +13,6 @@ if defined?(ActiveRecord)
     # after each record save
     def memoize_table_column(*raw_columns, editable: true)
       RedisMemo::MemoizeQuery.using_active_record!(self)
-
       columns = raw_columns.map(&:to_sym).sort
 
       RedisMemo::MemoizeQuery.memoized_columns(self, editable_only: true) << columns if editable
@@ -36,7 +35,9 @@ if defined?(ActiveRecord)
         end
       end
 
-      RedisMemo::MemoizeQuery.memoized_models[self.table_name] = self
+      unless ENV["REDIS_MEMO_DISABLE_QUERY_#{self.table_name.upcase}"] == 'true'
+        RedisMemo::MemoizeQuery::CachedSelect.enabled_models[self.table_name] = self
+      end
     rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
       # no-opts: models with memoize_table_column decleared might be loaded in
       # rake tasks that are used to create databases
@@ -53,12 +54,6 @@ if defined?(ActiveRecord)
     def self.memoized_columns(model_or_table, editable_only: false)
       table = model_or_table.is_a?(Class) ? model_or_table.table_name : model_or_table
       @@memoized_columns[table.to_sym][editable_only ? 1 : 0]
-    end
-
-    @@memoized_models = {}
-
-    def self.memoized_models
-      @@memoized_models
     end
 
     # extra_props are considered as AND conditions on the model class

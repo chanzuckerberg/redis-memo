@@ -92,6 +92,12 @@ class RedisMemo::MemoizeQuery::CachedSelect
   require_relative 'cached_select/connection_adapter'
   require_relative 'cached_select/statement_cache'
 
+  @@enabled_models = {}
+
+  def self.enabled_models
+    @@enabled_models
+  end
+
   def self.install(connection)
     klass = connection.class
     return if klass.singleton_class < RedisMemo::MemoizeMethod
@@ -318,7 +324,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   end
 
   def self.extract_binding_relation(table_node)
-    RedisMemo::MemoizeQuery.memoized_models[table_node.try(:name)]
+    enabled_models[table_node.try(:name)]
   end
 
   # Thread locals to exchange information between RedisMemo and ActiveRecord
