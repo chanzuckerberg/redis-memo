@@ -206,16 +206,8 @@ class RedisMemo::MemoizeQuery::CachedSelect
           return
         end
 
-      type_caster = table_node.send(:type_caster)
-      binding_relation =
-        case type_caster
-        when ActiveRecord::TypeCaster::Map
-          type_caster.send(:types)
-        when ActiveRecord::TypeCaster::Connection
-          type_caster.instance_variable_get(:@klass)
-        else
-          return
-        end
+      binding_relation = extract_binding_relation(table_node)
+      return unless binding_relation
 
       rights = node.right.is_a?(Array) ? node.right : [node.right]
       substitutes = Thread.current[THREAD_KEY_SUBSTITUTES]
@@ -256,9 +248,12 @@ class RedisMemo::MemoizeQuery::CachedSelect
       node.cores.each do |core|
         # Should have a WHERE if directly selecting from a table
         source_node = core.source.left
+        binding_relation = nil
         case source_node
         when Arel::Table
-          return if core.wheres.empty?
+          binding_relation = extract_binding_relation(source_node)
+
+          return if core.wheres.empty? || binding_relation.nil?
         when Arel::Nodes::TableAlias
           bind_params = bind_params.union(
             extract_bind_params_recurse(source_node.left)
@@ -285,6 +280,9 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
           return unless bind_params
         end
+
+        # Reject any unbound select queries
+        return if binding_relation && bind_params.params[binding_relation].empty?
       end
 
       bind_params
@@ -317,6 +315,10 @@ class RedisMemo::MemoizeQuery::CachedSelect
       # Not yet supported
       return
     end
+  end
+
+  def self.extract_binding_relation(table_node)
+    RedisMemo::MemoizeQuery.memoized_models[table_node.try(:name)]
   end
 
   # Thread locals to exchange information between RedisMemo and ActiveRecord
