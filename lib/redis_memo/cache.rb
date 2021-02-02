@@ -5,8 +5,9 @@ require_relative 'redis'
 class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   class Rescuable < Exception; end
 
-  THREAD_KEY_LOCAL_CACHE = :__redis_memo_cache_local_cache__
-  THREAD_KEY_RAISE_ERROR = :__redis_memo_cache_raise_error__
+  THREAD_KEY_LOCAL_CACHE            = :__redis_memo_cache_local_cache__
+  THREAD_KEY_LOCAL_DEPENDENCY_CACHE = :__redis_memo_local_cache_dependency_cache__
+  THREAD_KEY_RAISE_ERROR            = :__redis_memo_cache_raise_error__
 
   @@redis = nil
   @@redis_store = nil
@@ -44,12 +45,18 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     Thread.current[THREAD_KEY_LOCAL_CACHE]
   end
 
+  def self.local_dependency_cache
+    Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE]
+  end
+
   class << self
     def with_local_cache(&blk)
       Thread.current[THREAD_KEY_LOCAL_CACHE] = {}
+      Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE] = {}
       blk.call
     ensure
       Thread.current[THREAD_KEY_LOCAL_CACHE] = nil
+      Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE] = nil
     end
 
     # RedisCacheStore doesn't read from the local cache before reading from redis
