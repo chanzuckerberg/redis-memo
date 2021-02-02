@@ -45,19 +45,15 @@ module RedisMemo::MemoizeMethod
     @memoized_dependencies[method_name] = depends_on
 
     define_method :dependency_of do |method_name, *method_args|
-      self.class.dependency_of(method_name, *method_args)
+      method_depends_on = self.class.instance_variable_get(:@memoized_dependencies)[method_name]
+      unless method_depends_on
+        raise(
+          RedisMemo::ArgumentError,
+          "#{method_name} is not a memoized method"
+        )
+      end
+      RedisMemo::MemoizeMethod.extract_dependencies(self, *method_args, &method_depends_on)
     end
-  end
-
-  def dependency_of(method_name, *method_args)
-    depends_on = @memoized_dependencies[method_name]
-    unless depends_on
-      raise(
-        RedisMemo::ArgumentError,
-        "#{method_name} is not a memoized method"
-      )
-    end
-    RedisMemo::MemoizeMethod.extract_dependencies(self, *method_args, &depends_on)
   end
 
   def self.method_id(ref, method_name)
