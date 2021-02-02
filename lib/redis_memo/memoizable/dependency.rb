@@ -25,7 +25,7 @@ class RedisMemo::Memoizable::Dependency
         # Extract dependencies from the current memoizable and recurse
         instance_exec(&memo.depends_on)
       end
-    when using_active_record?
+    when UsingActiveRecord
       [
         dependency.redis_memo_class_memoizable,
         RedisMemo::MemoizeQuery.create_memo(dependency, **conditions),
@@ -35,12 +35,14 @@ class RedisMemo::Memoizable::Dependency
     else
       raise(
         RedisMemo::ArgumentError,
-        "Invalid dependency type #{dependency.class}"
+        "Invalid dependency #{dependency}"
       )
     end
   end
 
-  def using_active_record?
-    Proc.new { |dependency| RedisMemo::MemoizeQuery.using_active_record?(dependency) }
+  class UsingActiveRecord
+    def self.===(dependency)
+      RedisMemo::MemoizeQuery.using_active_record?(dependency)
+    end
   end
 end
