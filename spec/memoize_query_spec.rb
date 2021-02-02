@@ -23,9 +23,11 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  class Teacher < ActiveRecord::Base
+  class User < ActiveRecord::Base
     extend RedisMemo::MemoizeQuery
+  end
 
+  class Teacher < User
     has_many :teacher_sites
     has_many :sites, through: :teacher_sites
   end
@@ -52,10 +54,15 @@ describe RedisMemo::MemoizeQuery do
     Site.memoize_table_column :my_enum
     Site.memoize_table_column :a, :b
 
-    ActiveRecord::Base.connection.execute 'drop table if exists teachers'
-    ActiveRecord::Base.connection.create_table :teachers do |t|
+    ActiveRecord::Base.connection.execute 'drop table if exists users'
+    ActiveRecord::Base.connection.create_table :users do |t|
+      t.string 'type'
+
+      t.integer 'a', default: 0
+      t.integer 'b', default: 0
     end
-    Teacher.memoize_table_column :id, editable: false
+    User.memoize_table_column :id, editable: false
+    User.memoize_table_column :id, :type, editable: false
 
     ActiveRecord::Base.connection.execute 'drop table if exists teacher_sites'
     ActiveRecord::Base.connection.create_table :teacher_sites do |t|
@@ -70,7 +77,7 @@ describe RedisMemo::MemoizeQuery do
   after(:all) do
     # Clean up
     ActiveRecord::Base.connection.execute 'drop table if exists sites'
-    ActiveRecord::Base.connection.execute 'drop table if exists teachers'
+    ActiveRecord::Base.connection.execute 'drop table if exists users'
     ActiveRecord::Base.connection.execute 'drop table if exists teacher_sites'
   end
 
@@ -129,41 +136,43 @@ describe RedisMemo::MemoizeQuery do
 
   it 'memoizes records' do
     expect {
-      Site.find(1)
+      Teacher.find(1)
     }.to raise_error(ActiveRecord::RecordNotFound)
 
     expect {
-      Site.find_by_id!(1)
+      Teacher.find_by_id!(1)
     }.to raise_error(ActiveRecord::RecordNotFound)
 
     expect_to_eq_with_or_without_redis do
-      Site.find_by_id(1)
+      Teacher.find_by_id(1)
     end
 
     # Create
-    record = Site.create!
+    record = Teacher.create!
 
     expect_to_eq_with_or_without_redis do
-      Site.find(record.id)
+      Teacher.find(record.id)
     end
     expect_to_eq_with_or_without_redis do
-      Site.find_by_id!(record.id)
+      Teacher.find_by_id!(record.id)
     end
     expect_to_eq_with_or_without_redis do
-      Site.find_by_id(record.id)
+      Teacher.find_by_id(record.id)
     end
+
+    expect(User.find_by_id(record.id)).to eq(Teacher.find_by_id(record.id))
 
     # Update
     record.update(a: 1)
     expect_to_use_redis do
-      expect(Site.find_by_id!(record.id)).to eq(record)
+      expect(Teacher.find_by_id!(record.id)).to eq(record)
     end
 
     # Destroy
     record_id = record.id
     record.destroy
     expect_to_eq_with_or_without_redis do
-      Site.find_by_id(record_id)
+      Teacher.find_by_id(record_id)
     end
   end
 
