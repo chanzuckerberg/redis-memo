@@ -104,7 +104,12 @@ describe RedisMemo::Memoizable::Invalidation do
         extend RedisMemo::MemoizeMethod
   
         attr_accessor :calc_count
-  
+        attr_reader :id
+
+        def initialize(id)
+          @id = id
+        end
+
         def calc(x)
           @calc_count += 1
         end
@@ -113,9 +118,10 @@ describe RedisMemo::Memoizable::Invalidation do
           @calc_count += 1
         end
 
-        memoize_method :calc_b_c do |_, x|
+        memoize_method :calc_b_c do |obj, x|
           depends_on RedisMemoSpecDAG.b(x)
           depends_on RedisMemoSpecDAG.c(x)
+          depends_on RedisMemo::Memoizable.new(id: obj.id, val: x)
         end
 
         memoize_method :calc do |obj, x|
@@ -124,13 +130,14 @@ describe RedisMemo::Memoizable::Invalidation do
         end
       end
 
-      obj = klass.new
+      obj = klass.new(:e)
       obj.calc_count = 0
       val = 0
       [
         RedisMemoSpecDAG.a(val),
         RedisMemoSpecDAG.b(val),
         RedisMemoSpecDAG.c(val),
+        RedisMemo::Memoizable.new(id: obj.id, val: val),
         RedisMemo::Memoizable.new(val: val)
       ].each do |memo|
         expect {
