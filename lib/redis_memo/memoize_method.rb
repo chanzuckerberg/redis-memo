@@ -41,11 +41,11 @@ module RedisMemo::MemoizeMethod
 
     alias_method method_name, method_name_with_memo
 
-    @memoized_dependencies ||= Hash.new
-    @memoized_dependencies[method_name] = depends_on
+    @__redis_memo_method_dependencies ||= Hash.new
+    @__redis_memo_method_dependencies[method_name] = depends_on
 
     define_method :dependency_of do |method_name, *method_args|
-      method_depends_on = self.class.instance_variable_get(:@memoized_dependencies)[method_name]
+      method_depends_on = self.class.instance_variable_get(:@__redis_memo_method_dependencies)[method_name]
       unless method_depends_on
         raise(
           RedisMemo::ArgumentError,
