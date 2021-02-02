@@ -33,7 +33,7 @@ class RedisMemo::MemoizeQuery::Invalidation
     # Methods that won't trigger model callbacks
     # https://guides.rubyonrails.org/active_record_callbacks.html#skipping-callbacks
     %i(
-      import
+      import import!
       decrement_counter
       delete_all delete_by
       increment_counter
