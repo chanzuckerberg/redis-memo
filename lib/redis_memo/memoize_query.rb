@@ -72,26 +72,23 @@ if defined?(ActiveRecord)
         )
       end
 
-      extra_props.each do |key, values|
+      extra_props.each do |key, value|
         # The data type is ensured by the database, thus we don't need to cast
         # types here for better performance
         column_name = key.to_s
-        values = [values] unless values.is_a?(Enumerable)
         extra_props[key] =
           if model_class.defined_enums.include?(column_name)
             enum_mapping = model_class.defined_enums[column_name]
-            values.map do |value|
-              # Assume a value is a converted enum if it does not exist in the
-              # enum mapping
-              (enum_mapping[value.to_s] || value).to_s
-            end
+            # Assume a value is a converted enum if it does not exist in the
+            # enum mapping
+            (enum_mapping[value.to_s] || value).to_s
           else
-            values.map(&:to_s)
+            value.to_s
           end
       end
 
       RedisMemo::Memoizable.new(
-        __redis_memo_memoize_query_model_class_name__: model_class.name,
+        __redis_memo_memoize_query_table_name__: model_class.table_name,
         **extra_props,
       )
     end
