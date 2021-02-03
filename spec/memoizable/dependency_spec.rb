@@ -99,7 +99,7 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { obj.calc_count }.by(1)
     end
 
-    it 'pulls in dependencies defined by other methods' do
+    context 'with dependencies of other methods' do
       klass = Class.new do
         extend RedisMemo::MemoizeMethod
   
@@ -129,21 +129,31 @@ describe RedisMemo::Memoizable::Invalidation do
           depends_on RedisMemo::Memoizable.new(val: x)
         end
       end
-
       obj = klass.new(:e)
       obj.calc_count = 0
       val = 0
-      [
-        RedisMemoSpecDAG.a(val),
-        RedisMemoSpecDAG.b(val),
-        RedisMemoSpecDAG.c(val),
-        RedisMemo::Memoizable.new(id: obj.id, val: val),
-        RedisMemo::Memoizable.new(val: val)
-      ].each do |memo|
-        expect {
-          RedisMemo::Memoizable.invalidate([memo])
+
+      it 'pulls in dependencies defined by other methods' do
+        [
+          RedisMemoSpecDAG.a(val),
+          RedisMemoSpecDAG.b(val),
+          RedisMemoSpecDAG.c(val),
+          RedisMemo::Memoizable.new(id: obj.id, val: val),
+          RedisMemo::Memoizable.new(val: val)
+        ].each do |memo|
+          expect {
+            RedisMemo::Memoizable.invalidate([memo])
+            5.times { obj.calc(val) }
+          }.to change { obj.calc_count }.by(1)
+        end
+      end
+
+      it 'locally caches computation to extract dependencies' do
+        RedisMemo::Cache.with_local_cache do
+          expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).twice.and_call_original
+          5.times { obj.calc_b_c(val) }
           5.times { obj.calc(val) }
-        }.to change { obj.calc_count }.by(1)
+        end
       end
     end
 

@@ -52,7 +52,7 @@ module RedisMemo::MemoizeMethod
           "#{method_name} is not a memoized method"
         )
       end
-      RedisMemo::MemoizeMethod.extract_dependencies(self, *method_args, &method_depends_on)
+      RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *method_args, &method_depends_on)
     end
   end
 
@@ -71,11 +71,21 @@ module RedisMemo::MemoizeMethod
     dependency
   end
 
+  def self.get_or_extract_dependencies(ref, *method_args, &depends_on)
+    if RedisMemo::Cache.local_dependency_cache
+      RedisMemo::Cache.local_dependency_cache[ref] ||= {}
+      RedisMemo::Cache.local_dependency_cache[ref][depends_on] ||= {}
+      RedisMemo::Cache.local_dependency_cache[ref][depends_on][method_args] ||= extract_dependencies(ref, *method_args, &depends_on)
+    else
+      extract_dependencies(ref, *method_args, &depends_on)
+    end
+  end
+
   def self.method_cache_keys(future_contexts)
     memos = Array.new(future_contexts.size)
     future_contexts.each_with_index do |(ref, _, method_args, depends_on), i|
       if depends_on
-        dependency = extract_dependencies(ref, *method_args, &depends_on)
+        dependency = get_or_extract_dependencies(ref, *method_args, &depends_on)
         memos[i] = dependency.memos
       end
     end
