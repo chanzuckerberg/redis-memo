@@ -151,8 +151,8 @@ describe RedisMemo::Memoizable::Invalidation do
       it 'locally caches computation to extract dependencies' do
         RedisMemo::Cache.with_local_cache do
           expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).twice.and_call_original
-          5.times { obj.calc(val) }
           5.times { obj.calc_b_c(val) }
+          5.times { obj.calc(val) }
         end
       end
     end

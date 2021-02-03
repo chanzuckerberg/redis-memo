@@ -74,7 +74,8 @@ module RedisMemo::MemoizeMethod
   def self.get_or_extract_dependencies(ref, *method_args, &depends_on)
     if RedisMemo::Cache.local_dependency_cache
       RedisMemo::Cache.local_dependency_cache[ref] ||= {}
-      RedisMemo::Cache.local_dependency_cache[ref][method_args] ||= extract_dependencies(ref, *method_args, &depends_on)
+      RedisMemo::Cache.local_dependency_cache[ref][depends_on] ||= {}
+      RedisMemo::Cache.local_dependency_cache[ref][depends_on][method_args] ||= extract_dependencies(ref, *method_args, &depends_on)
     else
       extract_dependencies(ref, *method_args, &depends_on)
     end
