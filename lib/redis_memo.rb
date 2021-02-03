@@ -2,6 +2,7 @@
 require 'active_support/all'
 require 'digest'
 require 'json'
+require 'securerandom'
 
 module RedisMemo
   require 'redis_memo/memoize_method'
@@ -23,6 +24,10 @@ module RedisMemo
 
   def self.checksum(serialized)
     Digest::SHA1.base64digest(serialized)
+  end
+
+  def self.uuid
+    SecureRandom.uuid
   end
 
   def self.deep_sort_hash(orig_hash)

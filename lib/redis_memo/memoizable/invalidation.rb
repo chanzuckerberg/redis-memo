@@ -96,7 +96,7 @@ module RedisMemo::Memoizable::Invalidation
       RedisMemo::Cache.redis.eval(
         LUA_BUMP_VERSION,
         keys: [cache_key],
-        argv: [previous_version, version, SecureRandom.uuid, ttl],
+        argv: [previous_version, version, RedisMemo.uuid, ttl],
       )
     end
     RedisMemo::DefaultOptions.logger&.info("[performed] Bump memo key #{cache_key}")

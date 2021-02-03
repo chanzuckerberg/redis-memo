@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-require 'securerandom'
 
 class RedisMemo::Memoizable
   require_relative 'memoizable/dependency'
@@ -52,7 +51,7 @@ class RedisMemo::Memoizable
       cache_key = instance.cache_key
       RedisMemo::Memoizable::Invalidation.bump_version_later(
         cache_key,
-        SecureRandom.uuid,
+        RedisMemo.uuid,
       )
     end
 
@@ -96,7 +95,7 @@ class RedisMemo::Memoizable
         # cached result.
         need_to_bump_versions = true
 
-        new_version = SecureRandom.uuid
+        new_version = RedisMemo.uuid
         RedisMemo::Memoizable::Invalidation.bump_version_later(
           key,
           new_version,
