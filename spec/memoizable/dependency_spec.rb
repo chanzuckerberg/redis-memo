@@ -253,4 +253,58 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { obj.calc_count }.by(1)
     end
   end
+
+  context 'with an arel dependency' do
+    class SpecModel < ActiveRecord::Base
+      extend RedisMemo::MemoizeMethod
+      extend RedisMemo::MemoizeQuery
+
+      attr_accessor :calc_count
+
+      def calc
+        @calc_count += 1
+      end
+
+      memoize_method :calc do |record|
+        depends_on SpecModel.where(a: record.a)
+      end
+    end
+    before(:each) do
+      ActiveRecord::Base.connection.execute 'drop table if exists spec_models'
+      ActiveRecord::Base.connection.create_table :spec_models do |t|
+        t.integer 'a', default: 0
+        t.integer 'not_memoized', default: 0
+      end
+
+      SpecModel.memoize_table_column :a, editable: false
+    end
+
+    it 'pulls in dependencies from an activerecord relation' do
+      record = SpecModel.create!(a: 1)
+      record.calc_count = 0
+      expect {
+        5.times { record.calc }
+      }.to change { record.calc_count }.by(1)
+      expect {
+        record.update!(a: 2)
+        5.times { record.calc }
+      }.to change { record.calc_count }.by(1)
+    end
+
+    it 'raises an error when the arel is not memoized' do
+      record = SpecModel.create!(a: 1, not_memoized: 1)
+      record.class_eval do
+        def calc_2
+          @calc_count += 2
+        end
+
+        memoize_method :calc_2 do |record|
+          depends_on SpecModel.where(not_memoized: record.not_memoized)
+        end
+      end
+      expect {
+        record.calc_2
+      }.to raise_error(RedisMemo::ArgumentError)
+    end
+  end
 end
