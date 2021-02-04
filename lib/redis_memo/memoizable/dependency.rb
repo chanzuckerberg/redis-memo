@@ -44,17 +44,18 @@ class RedisMemo::Memoizable::Dependency
   end
 
   def extract_dependencies_for_relation(relation)
-    connection = ActiveRecord::Base.connection
-    query, binds = connection.send(:to_sql_and_binds, relation.arel) # Is there another way to get this info?
-    RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
-    is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
-      raise(
-        RedisMemo::ArgumentError,
-        "Invalid Arel dependency. Query is not enabled for RedisMemo caching."
-      ) unless is_query_cached
-      extracted_dependency = connection.dependency_of(:exec_query, query, nil, binds)
-  ensure
-    RedisMemo::MemoizeQuery::CachedSelect.reset_current_query
+    # Extract the dependent memos of an Arel without calling exec_query to actually execute the query
+    RedisMemo::MemoizeQuery::CachedSelect.with_new_query_context do
+      connection = ActiveRecord::Base.connection
+      query, binds, _ = connection.send(:to_sql_and_binds, relation.arel)
+      RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
+      is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
+        raise(
+          RedisMemo::ArgumentError,
+          "Invalid Arel dependency. Query is not enabled for RedisMemo caching."
+        ) unless is_query_cached
+        extracted_dependency = connection.dependency_of(:exec_query, query, nil, binds)
+    end
   end
 
   class UsingActiveRecord

@@ -187,6 +187,19 @@ class RedisMemo::MemoizeQuery::CachedSelect
     Thread.current[THREAD_KEY_AREL_BIND_PARAMS] = nil
   end
 
+  def self.with_new_query_context
+    prev_arel = Thread.current[THREAD_KEY_AREL]
+    prev_substitutes = Thread.current[THREAD_KEY_SUBSTITUTES]
+    prev_bind_params = Thread.current[THREAD_KEY_AREL_BIND_PARAMS]
+    RedisMemo::MemoizeQuery::CachedSelect.reset_current_query
+
+    yield
+  ensure
+    Thread.current[THREAD_KEY_AREL] = prev_arel
+    Thread.current[THREAD_KEY_SUBSTITUTES] = prev_substitutes
+    Thread.current[THREAD_KEY_AREL_BIND_PARAMS] = prev_bind_params
+  end
+
   private
 
   # A pre-order Depth First Search
