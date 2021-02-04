@@ -25,6 +25,9 @@ class RedisMemo::Memoizable::Dependency
         # Extract dependencies from the current memoizable and recurse
         instance_exec(&memo.depends_on)
       end
+    when ActiveRecord::Relation
+      extracted = extract_dependencies_for_relation(dependency)
+      nodes.merge!(extracted.nodes)
     when UsingActiveRecord
       [
         dependency.redis_memo_class_memoizable,
@@ -38,6 +41,20 @@ class RedisMemo::Memoizable::Dependency
         "Invalid dependency #{dependency}"
       )
     end
+  end
+
+  def extract_dependencies_for_relation(relation)
+    connection = ActiveRecord::Base.connection
+    query, binds = connection.send(:to_sql_and_binds, relation.arel) # Is there another way to get this info?
+    RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
+    is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
+      raise(
+        RedisMemo::ArgumentError,
+        "Invalid Arel dependency. Query is not enabled for RedisMemo caching."
+      ) unless is_query_cached
+      extracted_dependency = connection.dependency_of(:exec_query, query, nil, binds)
+  ensure
+    RedisMemo::MemoizeQuery::CachedSelect.reset_current_query
   end
 
   class UsingActiveRecord
