@@ -103,6 +103,10 @@ if defined?(ActiveRecord)
     end
 
     def self.invalidate(record)
+      RedisMemo::Memoizable.invalidate(to_memos(record))
+    end
+
+    def self.to_memos(record)
       # Invalidate memos with current values
       memos_to_invalidate = memoized_columns(record.class).map do |columns|
         props = {}
@@ -137,7 +141,7 @@ if defined?(ActiveRecord)
         end
       end
 
-      RedisMemo::Memoizable.invalidate(memos_to_invalidate)
+      memos_to_invalidate
     end
   end
 end

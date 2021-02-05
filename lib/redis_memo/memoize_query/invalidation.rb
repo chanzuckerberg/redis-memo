@@ -33,7 +33,6 @@ class RedisMemo::MemoizeQuery::Invalidation
     # Methods that won't trigger model callbacks
     # https://guides.rubyonrails.org/active_record_callbacks.html#skipping-callbacks
     %i(
-      import import!
       decrement_counter
       delete_all delete_by
       increment_counter
@@ -43,7 +42,7 @@ class RedisMemo::MemoizeQuery::Invalidation
       upsert upsert_all
     ).each do |method_name|
       # Example: Model.update_all
-      rewrite_bulk_update_method(
+      rewrite_default_method(
         model_class,
         model_class,
         method_name,
@@ -51,11 +50,20 @@ class RedisMemo::MemoizeQuery::Invalidation
       )
 
       # Example: Model.where(...).update_all
-      rewrite_bulk_update_method(
+      rewrite_default_method(
         model_class,
         model_class.const_get(:ActiveRecord_Relation),
         method_name,
         class_method: false,
+      )
+    end
+
+    %i(
+      import import!
+    ).each do |method_name|
+      rewrite_import_method(
+        model_class,
+        method_name,
       )
     end
 
@@ -65,14 +73,13 @@ class RedisMemo::MemoizeQuery::Invalidation
   private
 
   #
-  # There’s no good way to perform fine-grind cache invalidation when operations
-  # are bulk update operations such as import, update_all, and destroy_all:
-  # Performing fine-grind cache invalidation would require the applications to
-  # fetch additional data from the database, which might lead to performance
-  # degradation. Thus we simply invalidate all existing cached records after each
-  # bulk_updates.
+  # There’s no good way to perform fine-grind cache invalidation when
+  # operations are bulk update operations such as update_all, and delete_all
+  # witout fetching additional data from the database, which might lead to
+  # performance degradation. Thus, by default, we simply invalidate all
+  # existing cached records after each bulk_updates.
   #
-  def self.rewrite_bulk_update_method(model_class, klass, method_name, class_method:)
+  def self.rewrite_default_method(model_class, klass, method_name, class_method:)
     methods = class_method ? :methods : :instance_methods
     return unless klass.send(methods).include?(method_name)
 
@@ -86,5 +93,80 @@ class RedisMemo::MemoizeQuery::Invalidation
         result
       end
     end
+  end
+
+  def self.rewrite_import_method(model_class, method_name)
+    # This optimization to avoid over-invalidation only works on postgres
+    unless ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
+      rewrite_default_method(model_class, model_class, method_name, class_method: true)
+      return
+    end
+
+    model_class.singleton_class.class_eval do
+      alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
+
+      # For the args format, see
+      # https://github.com/zdennis/activerecord-import/blob/master/lib/activerecord-import/import.rb#L128
+      define_method method_name do |*args, &blk|
+        options = args.last.is_a?(Hash) ? args.last : {}
+        records = args[args.last.is_a?(Hash) ? -2 : -1]
+        unique_by = options[:on_duplicate_key_update]
+        if unique_by.is_a?(Hash)
+          unique_by = unique_by[:columns]
+        end
+
+        if records.last.is_a?(Hash)
+          records.map! { |hash| model_class.new(hash) }
+        end
+
+        # Invalidate the records before and after the import to resolve
+        # - default values filled by the database
+        # - updates on conflict conditions
+        records_to_invalidate =
+          if unique_by
+            RedisMemo::MemoizeQuery::Invalidation.send(
+              :select_by_uniq_index,
+              records,
+              unique_by,
+            )
+          else
+            []
+          end
+
+        result = send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
+
+        records_to_invalidate += RedisMemo.without_memo do
+          # Not all databases support "RETURNING", which is useful when
+          # invaldating records after bulk creation
+          model_class.where(model_class.primary_key => result.ids).to_a
+        end
+
+        memos_to_invalidate = records_to_invalidate.map do |record|
+          RedisMemo::MemoizeQuery.to_memos(record)
+        end
+        RedisMemo::Memoizable.invalidate(memos_to_invalidate.flatten)
+
+        result
+      end
+    end
+  end
+
+  def self.select_by_uniq_index(records, unique_by)
+    model_class = records.first.class
+    or_chain = nil
+
+    records.each do |record|
+      conditions = {}
+      unique_by.each do |column|
+        conditions[column] = record.send(column)
+      end
+      if or_chain
+        or_chain = or_chain.or(model_class.where(conditions))
+      else
+        or_chain = model_class.where(conditions)
+      end
+    end
+
+    RedisMemo.without_memo { or_chain.to_a }
   end
 end

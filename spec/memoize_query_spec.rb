@@ -1,4 +1,5 @@
-# typed: false
+require 'activerecord-import'
+
 describe RedisMemo::MemoizeQuery do
   class Site < ActiveRecord::Base
     extend RedisMemo::MemoizeMethod
@@ -233,10 +234,32 @@ describe RedisMemo::MemoizeQuery do
       end
 
       it 'recalculates after import' do
-        if Site.respond_to?(:import)
+        RedisMemo::Cache.with_local_cache do
+          site = Site.create!(a: 0)
+          expect_to_eq_with_or_without_redis do
+            Site.find(site.id)
+          end
+
           records = 5.times.map { Site.new(a: 2) }
           Site.import(records)
           expect(Site.a_count(2)).to eq(7)
+
+          records.each do |record|
+            record.a = 3
+          end
+          Site.import(records, on_duplicate_key_update: [:a])
+          expect(Site.a_count(3)).to eq(5)
+
+          records.each do |record|
+            record.a = 4
+          end
+          Site.import(records, on_duplicate_key_update: {conflict_target: [:id], columns: [:a]})
+          expect(Site.a_count(4)).to eq(5)
+
+          # site(a: 0) is not affected by the imports
+          expect_not_to_use_redis do
+            5.times { Site.find(site.id) }
+          end
         end
       end
 
