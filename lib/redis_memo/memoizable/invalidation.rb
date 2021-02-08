@@ -3,12 +3,29 @@ require_relative '../after_commit'
 require_relative '../cache'
 
 module RedisMemo::Memoizable::Invalidation
-  # This is a thread safe data structure
-  #
-  # Handle transient network errors during cache invalidation
-  # Each item in the queue is a tuple:
-  #
-  #   [key, version (a UUID), previous_version (a UUID)]
+  class Task
+    attr_reader :key
+    attr_reader :version
+    attr_reader :previous_version
+
+    def initialize(key, version, previous_version)
+      @key = key
+      @version = version
+      @previous_version = previous_version
+      @created_at = current_timestamp
+    end
+
+    def current_timestamp
+      Process.clock_gettime(Process::CLOCK_REALTIME, :nanosecond)
+    end
+
+    def duration
+      current_timestamp - @created_at
+    end
+  end
+
+  # This is a thread safe data structure to handle transient network errors
+  # during cache invalidation
   #
   # When an invalidation call arrives at Redis, we only bump to the specified
   # version (so the cached results using that version will become visible) if
@@ -28,8 +45,6 @@ module RedisMemo::Memoizable::Invalidation
   @@invalidation_queue = Queue.new
 
   def self.bump_version_later(key, version, previous_version: nil)
-    RedisMemo::DefaultOptions.logger&.info("[received] Bump memo key #{key}")
-
     if RedisMemo::AfterCommit.in_transaction?
       previous_version ||= RedisMemo::AfterCommit.pending_memo_versions[key]
     end
@@ -52,7 +67,7 @@ module RedisMemo::Memoizable::Invalidation
         previous_version: previous_version,
       )
     else
-      @@invalidation_queue << [key, version, previous_version]
+      @@invalidation_queue << Task.new(key, version, previous_version)
     end
   end
 
@@ -89,31 +104,31 @@ module RedisMemo::Memoizable::Invalidation
     return redis.call('set', key, new_version, unpack(px))
   LUA
 
-  def self.bump_version(cache_key, version, previous_version:)
-    RedisMemo::Tracer.trace('redis_memo.memoizable.bump_version', nil) do
+  def self.bump_version(task)
+    RedisMemo::Tracer.trace('redis_memo.memoizable.bump_version', task.key) do
       ttl = RedisMemo::DefaultOptions.expires_in
       ttl = (ttl * 1000.0).to_i if ttl
       RedisMemo::Cache.redis.eval(
         LUA_BUMP_VERSION,
-        keys: [cache_key],
-        argv: [previous_version, version, RedisMemo.uuid, ttl],
+        keys: [task.key],
+        argv: [task.previous_version, task.version, RedisMemo.uuid, ttl],
       )
+      RedisMemo::Tracer.set_tag(enqueue_to_finish: task.duration)
     end
-    RedisMemo::DefaultOptions.logger&.info("[performed] Bump memo key #{cache_key}")
   end
 
   def self.drain_invalidation_queue_now
     retry_queue = []
     until @@invalidation_queue.empty?
-      tuple = @@invalidation_queue.pop
+      task = @@invalidation_queue.pop
       begin
-        bump_version(tuple[0], tuple[1], previous_version: tuple[2])
+        bump_version(task)
       rescue SignalException, Redis::BaseConnectionError
-        retry_queue << tuple
+        retry_queue << task
       end
     end
   ensure
-    retry_queue.each { |t| @@invalidation_queue << t }
+    retry_queue.each { |task| @@invalidation_queue << task }
   end
 
   at_exit do

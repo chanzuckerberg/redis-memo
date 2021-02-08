@@ -11,13 +11,15 @@ class RedisMemo::Tracer
     end
   end
 
-  def self.set_tag(cache_hit:)
+  def self.set_tag(**tags)
     tracer = RedisMemo::DefaultOptions.tracer
     return if tracer.nil? || !tracer.respond_to?(:active_span)
 
     active_span = tracer.active_span
     return if !active_span.respond_to?(:set_tag)
 
-    active_span.set_tag('cache_hit', cache_hit)
+    tags.each do |name, value|
+      active_span.set_tag(name, value)
+    end
   end
 end

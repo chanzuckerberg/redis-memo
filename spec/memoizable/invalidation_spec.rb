@@ -9,16 +9,22 @@ describe RedisMemo::Memoizable::Invalidation do
   end
 
   it 'bumps version' do
-    RedisMemo::Memoizable::Invalidation.bump_version('key', 'version', previous_version: nil)
+    RedisMemo::Memoizable::Invalidation.bump_version(
+      RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil)
+    )
     version = redis.get('key')
     expect(version).to eq('version')
 
-    RedisMemo::Memoizable::Invalidation.bump_version('key', 'new_version', previous_version: nil)
+    RedisMemo::Memoizable::Invalidation.bump_version(
+      RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', nil)
+    )
     new_version = redis.get('key')
     expect(new_version).not_to eq(version)
     expect(new_version).not_to eq('new_version')
 
-    RedisMemo::Memoizable::Invalidation.bump_version('key', 'new_version', previous_version: new_version)
+    RedisMemo::Memoizable::Invalidation.bump_version(
+      RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', new_version)
+    )
     new_version = redis.get('key')
     expect(new_version).to eq('new_version')
   end
@@ -46,7 +52,7 @@ describe RedisMemo::Memoizable::Invalidation do
     allow(RedisMemo::Cache).to receive(:redis) do
       flaky_redis
     end
-    queue << ['key', 'version']
+    queue << RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil)
 
     RedisMemo::Memoizable::Invalidation.drain_invalidation_queue
     expect(queue.empty?).to be false
@@ -85,7 +91,7 @@ describe RedisMemo::Memoizable::Invalidation do
     # The actual version bumping might happen in some other test cases; so
     # here we're using a uniq key that's only used in this spec to avoid
     # affecting other test cases
-    queue << ['__async_key__', 'version']
+    queue << RedisMemo::Memoizable::Invalidation::Task.new('__async_key__', 'version', nil)
 
     # This code is run async, or it will never complete
     RedisMemo::Memoizable::Invalidation.drain_invalidation_queue

@@ -66,7 +66,12 @@ class RedisMemo::AfterCommit
       @@pending_memo_versions.each do |key, version|
         invalidation_queue =
           RedisMemo::Memoizable::Invalidation.class_variable_get(:@@invalidation_queue)
-        invalidation_queue << [key, version, @@previous_memo_versions[key]]
+
+        invalidation_queue << RedisMemo::Memoizable::Invalidation::Task.new(
+          key,
+          version,
+          @@previous_memo_versions[key],
+        )
       end
 
       RedisMemo::Memoizable::Invalidation.drain_invalidation_queue
