@@ -79,7 +79,13 @@ describe RedisMemo::Cache do
 
   it 'raises an error if configured' do
     allow(RedisMemo::DefaultOptions).to receive(:async) do
-      proc { |&blk| Thread.new { blk.call } }
+      proc do |&blk|
+        Thread.new do
+          # Do not print out stack traces
+          Thread.current.report_on_exception = false
+          blk.call
+        end
+      end
     end
     allow_any_instance_of(Redis).to receive(:mget) do
       raise ::Redis::BaseConnectionError

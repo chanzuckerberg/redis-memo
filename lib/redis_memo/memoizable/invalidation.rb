@@ -56,7 +56,10 @@ module RedisMemo::Memoizable::Invalidation
       # Fill an expected previous version so the later calculation results
       # based on this version can still be rolled out if this version
       # does not change
-      previous_version ||= RedisMemo::Cache.read_multi(key)[key]
+      previous_version ||= RedisMemo::Cache.read_multi(
+        key,
+        raw: true,
+      )[key]
     end
 
     local_cache&.send(:[]=, key, version)
