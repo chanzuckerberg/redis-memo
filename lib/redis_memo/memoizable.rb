@@ -82,7 +82,11 @@ class RedisMemo::Memoizable
       if keys_to_fetch.empty?
         {}
       else
-        RedisMemo::Cache.read_multi(*keys_to_fetch, raise_error: true)
+        RedisMemo::Cache.read_multi(
+          *keys_to_fetch,
+          raw: true,
+          raise_error: true,
+        )
       end
     memo_versions.merge!(cached_versions) unless cached_versions.empty?
 

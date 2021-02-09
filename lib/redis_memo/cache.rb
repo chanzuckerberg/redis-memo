@@ -60,7 +60,7 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     end
 
     # RedisCacheStore doesn't read from the local cache before reading from redis
-    def read_multi(*keys, raise_error: false)
+    def read_multi(*keys, raw: false, raise_error: false)
       return {} if keys.empty?
 
       Thread.current[THREAD_KEY_RAISE_ERROR] = raise_error
@@ -71,7 +71,7 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
       keys_to_fetch -= local_entries.keys unless local_entries.empty?
       return local_entries if keys_to_fetch.empty?
 
-      remote_entries = redis_store.read_multi(*keys_to_fetch)
+      remote_entries = redis_store.read_multi(*keys_to_fetch, raw: raw)
       local_cache&.merge!(remote_entries)
 
       if local_entries.empty?
