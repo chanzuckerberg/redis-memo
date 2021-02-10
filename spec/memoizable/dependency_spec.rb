@@ -291,7 +291,7 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { record.calc_count }.by(1)
     end
 
-    it 'Falls back to the uncached method when a dependent arel query is not memoized' do
+    it 'falls back to the uncached method when a dependent arel query is not memoized' do
       record = SpecModel.create!(a: 1, not_memoized: 1)
       record.calc_count = 0
       record.class_eval do
