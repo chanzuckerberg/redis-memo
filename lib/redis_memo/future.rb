@@ -28,7 +28,7 @@ class RedisMemo::Future
   end
 
   def context
-    [@ref, @method_id, @method_args, @dependent_memos]
+    [@method_id, @method_args, @dependent_memos]
   end
 
   def method_cache_key

@@ -91,14 +91,14 @@ module RedisMemo::MemoizeMethod
 
   def self.method_cache_keys(future_contexts)
     memos = Array.new(future_contexts.size)
-    future_contexts.each_with_index do |(_, _, _, dependent_memos), i|
+    future_contexts.each_with_index do |(_, _, dependent_memos), i|
       memos[i] = dependent_memos
     end
 
     j = 0
     memo_checksums = RedisMemo::Memoizable.checksums(memos.compact)
     method_cache_key_versions = Array.new(future_contexts.size)
-    future_contexts.each_with_index do |(_, method_id, method_args, _), i|
+    future_contexts.each_with_index do |(method_id, method_args, _), i|
       if memos[i]
         method_cache_key_versions[i] = [method_id, memo_checksums[j]]
         j += 1
