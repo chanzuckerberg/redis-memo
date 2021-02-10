@@ -97,4 +97,5 @@ module RedisMemo
   # @todo Move errors to a separate file errors.rb
   class ArgumentError < ::ArgumentError; end
   class RuntimeError < ::RuntimeError; end
+  class WithoutMemoization < Exception; end
 end

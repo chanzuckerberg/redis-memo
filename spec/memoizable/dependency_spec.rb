@@ -291,8 +291,9 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { record.calc_count }.by(1)
     end
 
-    it 'raises an error when the arel is not memoized' do
+    it 'Falls back to the uncached method when a dependent arel query is not memoized' do
       record = SpecModel.create!(a: 1, not_memoized: 1)
+      record.calc_count = 0
       record.class_eval do
         def calc_2
           @calc_count += 2
@@ -303,8 +304,8 @@ describe RedisMemo::Memoizable::Invalidation do
         end
       end
       expect {
-        record.calc_2
-      }.to raise_error(RedisMemo::ArgumentError)
+        5.times { record.calc_2 }
+      }.to change { record.calc_count }.by(10)
     end
   end
 end

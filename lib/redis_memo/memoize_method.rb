@@ -43,6 +43,8 @@ module RedisMemo::MemoizeMethod
       end
 
       future.execute
+    rescue RedisMemo::WithoutMemoization
+      send(method_name_without_memo, *args)
     end
 
     alias_method method_name, method_name_with_memo
