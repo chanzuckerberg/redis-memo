@@ -14,10 +14,10 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = ['>= 2.5.0']
 
-  s.add_dependency 'activesupport', '~> 5.2'
-  s.add_dependency 'redis', '~> 4'
+  s.add_dependency 'activesupport', '>= 5.2'
+  s.add_dependency 'redis', '>= 4.0.1'
 
-  s.add_development_dependency 'activerecord', '~> 5.2'
+  s.add_development_dependency 'activerecord', '>= 5.2'
   s.add_development_dependency 'activerecord-import'
   s.add_development_dependency 'codecov'
   s.add_development_dependency 'database_cleaner-active_record'
