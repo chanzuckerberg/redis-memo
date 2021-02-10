@@ -80,6 +80,7 @@ class RedisMemo::Options
   attr_accessor :expires_in
   attr_accessor :cache_validation_sampler
   attr_accessor :cache_out_of_date_handler
+  attr_accessor :connection_pool
 
   attr_writer :global_cache_key_version
   attr_writer :redis

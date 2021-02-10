@@ -1,6 +1,7 @@
  # frozen_string_literal: true
 require_relative 'options'
 require_relative 'redis'
+require_relative 'connection_pool'
 
 class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   class Rescuable < Exception; end
@@ -24,7 +25,15 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   end
 
   def self.redis
-    @@redis ||= RedisMemo::DefaultOptions.redis
+    @@redis ||=
+      if RedisMemo::DefaultOptions.connection_pool
+        RedisMemo::ConnectionPool.new(
+          RedisMemo::DefaultOptions.redis,
+          **RedisMemo::DefaultOptions.connection_pool,
+        )
+      else
+        RedisMemo::DefaultOptions.redis
+      end
   end
 
   def self.redis_store
