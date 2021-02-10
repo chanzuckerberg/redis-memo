@@ -13,6 +13,8 @@ if defined?(ActiveRecord)
     # after each record save
     def memoize_table_column(*raw_columns, editable: true)
       RedisMemo::MemoizeQuery.using_active_record!(self)
+      return if ENV["REDIS_MEMO_DISABLE_#{self.table_name.upcase}"] == 'true'
+
       columns = raw_columns.map(&:to_sym).sort
 
       RedisMemo::MemoizeQuery.memoized_columns(self, editable_only: true) << columns if editable
