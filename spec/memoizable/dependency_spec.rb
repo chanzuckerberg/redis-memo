@@ -291,8 +291,9 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { record.calc_count }.by(1)
     end
 
-    it 'raises an error when the arel is not memoized' do
+    it 'falls back to the uncached method when a dependent arel query is not memoized' do
       record = SpecModel.create!(a: 1, not_memoized: 1)
+      record.calc_count = 0
       record.class_eval do
         def calc_2
           @calc_count += 2
@@ -303,8 +304,30 @@ describe RedisMemo::Memoizable::Invalidation do
         end
       end
       expect {
-        record.calc_2
-      }.to raise_error(RedisMemo::ArgumentError)
+        5.times { record.calc_2 }
+      }.to change { record.calc_count }.by(10)
+    end
+
+    it 'Supports conditional memoization by raising a WithoutMemoization error' do
+      record = SpecModel.create!(a: 1)
+      record.calc_count = 0
+
+      record.class_eval do
+        def calc_2(without_memoization: false)
+          @calc_count += 2
+        end
+
+        memoize_method :calc_2 do |record, without_memoization|
+          raise RedisMemo::WithoutMemoization if without_memoization
+          depends_on SpecModel.where(a: record.a)
+        end
+      end
+      expect {
+        5.times { record.calc_2 }
+      }.to change { record.calc_count }.by(2)
+      expect {
+        5.times { record.calc_2(without_memoization: true) }
+      }.to change { record.calc_count }.by(10)
     end
   end
 end

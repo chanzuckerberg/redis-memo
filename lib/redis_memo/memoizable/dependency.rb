@@ -51,8 +51,8 @@ class RedisMemo::Memoizable::Dependency
       RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
       is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
         raise(
-          RedisMemo::ArgumentError,
-          "Invalid Arel dependency. Query is not enabled for RedisMemo caching."
+          RedisMemo::WithoutMemoization,
+          "Arel query is not cached using RedisMemo."
         ) unless is_query_cached
         extracted_dependency = connection.dependency_of(:exec_query, query, nil, binds)
     end

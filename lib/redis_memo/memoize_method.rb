@@ -15,6 +15,12 @@ module RedisMemo::MemoizeMethod
     define_method method_name_with_memo do |*args|
       return send(method_name_without_memo, *args) if RedisMemo.without_memo?
 
+      dependent_memos = nil
+      if depends_on
+        dependency = RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *args, &depends_on)
+        dependent_memos = dependency.memos
+      end
+
       future = RedisMemo::Future.new(
         self,
         case method_id
@@ -26,7 +32,7 @@ module RedisMemo::MemoizeMethod
           method_id.call(self, *args)
         end,
         args,
-        depends_on,
+        dependent_memos,
         options,
         method_name_without_memo,
       )
@@ -37,6 +43,8 @@ module RedisMemo::MemoizeMethod
       end
 
       future.execute
+    rescue RedisMemo::WithoutMemoization
+      send(method_name_without_memo, *args)
     end
 
     alias_method method_name, method_name_with_memo
@@ -83,17 +91,14 @@ module RedisMemo::MemoizeMethod
 
   def self.method_cache_keys(future_contexts)
     memos = Array.new(future_contexts.size)
-    future_contexts.each_with_index do |(ref, _, method_args, depends_on), i|
-      if depends_on
-        dependency = get_or_extract_dependencies(ref, *method_args, &depends_on)
-        memos[i] = dependency.memos
-      end
+    future_contexts.each_with_index do |(_, _, dependent_memos), i|
+      memos[i] = dependent_memos
     end
 
     j = 0
     memo_checksums = RedisMemo::Memoizable.checksums(memos.compact)
     method_cache_key_versions = Array.new(future_contexts.size)
-    future_contexts.each_with_index do |(_, method_id, method_args, _), i|
+    future_contexts.each_with_index do |(method_id, method_args, _), i|
       if memos[i]
         method_cache_key_versions[i] = [method_id, memo_checksums[j]]
         j += 1

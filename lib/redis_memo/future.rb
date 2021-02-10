@@ -9,14 +9,14 @@ class RedisMemo::Future
     ref,
     method_id,
     method_args,
-    depends_on,
+    dependent_memos,
     cache_options,
     method_name_without_memo
   )
     @ref = ref
     @method_id = method_id
     @method_args = method_args
-    @depends_on = depends_on
+    @dependent_memos = dependent_memos
     @cache_options = cache_options
     @method_name_without_memo = method_name_without_memo
     @method_cache_key = nil
@@ -28,7 +28,7 @@ class RedisMemo::Future
   end
 
   def context
-    [@ref, @method_id, @method_args, @depends_on]
+    [@method_id, @method_args, @dependent_memos]
   end
 
   def method_cache_key
