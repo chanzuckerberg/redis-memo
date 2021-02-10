@@ -123,7 +123,14 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
         depends_on RedisMemo::Memoizable.new(
           __redis_memo_memoize_query_memoize_query_sql__: sql,
-          __redis_memo_memoize_query_memoize_query_binds__: binds.map(&:value_for_database),
+          __redis_memo_memoize_query_memoize_query_binds__: binds.map do |bind|
+            if bind.respond_to?(:value_for_database)
+              bind.value_for_database
+            else
+              # In activerecord >= 6, a bind could be an actual database value
+              bind
+            end
+          end
         )
       end
     end
@@ -210,7 +217,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
     bind_params = BindParams.new
 
     case node
-    when Arel::Nodes::Equality, Arel::Nodes::In
+    when NodeHasFilterCondition
       attr_node = node.left
       return unless attr_node.is_a?(Arel::Attributes::Attribute)
 
@@ -247,7 +254,13 @@ class RedisMemo::MemoizeQuery::CachedSelect
           }
         when Arel::Nodes::Casted
           bind_params.params[binding_relation] << {
-            right.attribute.name.to_sym => right.val,
+            right.attribute.name.to_sym =>
+              if right.respond_to?(:val)
+                right.val
+              else
+                # activerecord >= 6
+                right.value
+              end,
           }
         else
           bind_params = bind_params.union(extract_bind_params_recurse(right))
@@ -341,6 +354,23 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
   def self.extract_binding_relation(table_node)
     enabled_models[table_node.try(:name)]
+  end
+
+  class NodeHasFilterCondition
+    def self.===(node)
+      case node
+      when Arel::Nodes::Equality, Arel::Nodes::In
+        true
+      else
+        # In activerecord >= 6, a new arel node HomogeneousIn is introduced
+        if defined?(Arel::Nodes::HomogeneousIn) &&
+           node.is_a?(Arel::Nodes::HomogeneousIn)
+          true
+        else
+          false
+        end
+      end
+    end
   end
 
   # Thread locals to exchange information between RedisMemo and ActiveRecord
