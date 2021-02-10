@@ -13,12 +13,12 @@ describe RedisMemo::Cache do
       redis.set('a', Marshal.dump(1))
 
       expect(redis).to receive(:mget).once.and_call_original
-      5.times { cache.read_multi('a') }
+      5.times { cache.read_multi('a', raw: true) }
 
       cache.write('b', Marshal.dump(2))
-      5.times { cache.read_multi('b') }
+      5.times { cache.read_multi('b', raw: true) }
 
-      5.times { cache.read_multi('a', 'b') }
+      5.times { cache.read_multi('a', 'b', raw: true) }
     end
   end
 
