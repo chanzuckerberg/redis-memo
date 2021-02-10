@@ -307,5 +307,27 @@ describe RedisMemo::Memoizable::Invalidation do
         5.times { record.calc_2 }
       }.to change { record.calc_count }.by(10)
     end
+
+    it 'Supports conditional memoization by raising a WithoutMemoization error' do
+      record = SpecModel.create!(a: 1)
+      record.calc_count = 0
+
+      record.class_eval do
+        def calc_2(without_memoization: false)
+          @calc_count += 2
+        end
+
+        memoize_method :calc_2 do |record, without_memoization|
+          raise RedisMemo::WithoutMemoization if without_memoization
+          depends_on SpecModel.where(a: record.a)
+        end
+      end
+      expect {
+        5.times { record.calc_2 }
+      }.to change { record.calc_count }.by(2)
+      expect {
+        5.times { record.calc_2(without_memoization: true) }
+      }.to change { record.calc_count }.by(10)
+    end
   end
 end
