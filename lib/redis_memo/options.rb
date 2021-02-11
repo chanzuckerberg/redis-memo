@@ -74,13 +74,14 @@ class RedisMemo::Options
   end
 
   attr_accessor :async
+  attr_accessor :bulk_operations_invalidation_limit
+  attr_accessor :cache_out_of_date_handler
+  attr_accessor :cache_validation_sampler
   attr_accessor :compress
   attr_accessor :compress_threshold
-  attr_accessor :redis_error_handler
-  attr_accessor :expires_in
-  attr_accessor :cache_validation_sampler
-  attr_accessor :cache_out_of_date_handler
   attr_accessor :connection_pool
+  attr_accessor :expires_in
+  attr_accessor :redis_error_handler
 
   attr_writer :global_cache_key_version
   attr_writer :redis

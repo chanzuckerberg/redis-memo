@@ -102,8 +102,10 @@ if defined?(ActiveRecord)
       end
     end
 
-    def self.invalidate(record)
-      RedisMemo::Memoizable.invalidate(to_memos(record))
+    def self.invalidate(*records)
+      RedisMemo::Memoizable.invalidate(
+        records.map { |record| to_memos(record) }.flatten,
+      )
     end
 
     def self.to_memos(record)
