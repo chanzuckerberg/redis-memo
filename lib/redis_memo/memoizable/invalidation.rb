@@ -126,7 +126,8 @@ module RedisMemo::Memoizable::Invalidation
       task = @@invalidation_queue.pop
       begin
         bump_version(task)
-      rescue SignalException, Redis::BaseConnectionError
+      rescue SignalException, Redis::BaseConnectionError,
+             ::ConnectionPool::TimeoutError
         retry_queue << task
       end
     end

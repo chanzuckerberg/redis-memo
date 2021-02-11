@@ -16,7 +16,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'activesupport', '>= 5.2'
   s.add_dependency 'redis', '>= 4.0.1'
-  s.add_dependency 'connection_pool'
+  s.add_dependency 'connection_pool', '>= 2.2.3'
 
   s.add_development_dependency 'activerecord', '>= 5.2'
   s.add_development_dependency 'activerecord-import'

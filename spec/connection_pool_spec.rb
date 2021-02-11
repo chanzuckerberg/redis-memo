@@ -1,9 +1,6 @@
 describe RedisMemo::ConnectionPool do
   it 'delegates methods' do
-    redis = RedisMemo::ConnectionPool.new(
-      RedisMemo::DefaultOptions.redis,
-      size: 5,
-    )
+    redis = RedisMemo::ConnectionPool.new(size: 5)
 
     expect(redis.ping).to eq(['PONG'])
     expect(redis.get('a')).to be_nil
