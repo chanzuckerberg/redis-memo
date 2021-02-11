@@ -110,9 +110,9 @@ class RedisMemo::MemoizeQuery::Invalidation
       define_method method_name do |*args, &blk|
         options = args.last.is_a?(Hash) ? args.last : {}
         records = args[args.last.is_a?(Hash) ? -2 : -1]
-        unique_by = options[:on_duplicate_key_update]
-        if unique_by.is_a?(Hash)
-          unique_by = unique_by[:columns]
+        columns_to_update = options[:on_duplicate_key_update]
+        if columns_to_update.is_a?(Hash)
+          columns_to_update = columns_to_update[:columns]
         end
 
         if records.last.is_a?(Hash)
@@ -123,11 +123,11 @@ class RedisMemo::MemoizeQuery::Invalidation
         # - default values filled by the database
         # - updates on conflict conditions
         records_to_invalidate =
-          if unique_by
+          if columns_to_update
             RedisMemo::MemoizeQuery::Invalidation.send(
-              :select_by_uniq_index,
+              :select_by_columns,
               records,
-              unique_by,
+              columns_to_update,
             )
           else
             []
@@ -135,38 +135,77 @@ class RedisMemo::MemoizeQuery::Invalidation
 
         result = send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
 
-        records_to_invalidate += RedisMemo.without_memo do
-          # Not all databases support "RETURNING", which is useful when
-          # invaldating records after bulk creation
-          model_class.where(model_class.primary_key => result.ids).to_a
-        end
+        # Offload the records to invalidate while selecting the next set of
+        # records to invalidate
+        case records_to_invalidate
+        when Array
+          RedisMemo::MemoizeQuery.invalidate(*records_to_invalidate) unless records_to_invalidate.empty?
 
-        memos_to_invalidate = records_to_invalidate.map do |record|
-          RedisMemo::MemoizeQuery.to_memos(record)
+          RedisMemo::MemoizeQuery.invalidate(*RedisMemo::MemoizeQuery::Invalidation.send(
+            :select_by_id,
+            model_class,
+            # Not all databases support "RETURNING", which is useful when
+            # invaldating records after bulk creation
+            result.ids,
+          ))
+        else
+          RedisMemo::MemoizeQuery.invalidate_all(model_class)
         end
-        RedisMemo::Memoizable.invalidate(memos_to_invalidate.flatten)
 
         result
       end
     end
   end
 
-  def self.select_by_uniq_index(records, unique_by)
+  def self.select_by_columns(records, columns_to_update)
     model_class = records.first.class
     or_chain = nil
+    columns_to_select = columns_to_update & RedisMemo::MemoizeQuery
+      .memoized_columns(model_class)
+      .to_a.flatten.uniq
 
-    records.each do |record|
-      conditions = {}
-      unique_by.each do |column|
-        conditions[column] = record.send(column)
+    # Nothing to invalidate here
+    return [] if columns_to_select.empty?
+
+    RedisMemo::Tracer.trace(
+      'redis_memo.memoize_query.invalidation',
+      "#{__method__}##{model_class.name}",
+    ) do
+      records.each do |record|
+        conditions = {}
+        columns_to_select.each do |column|
+          conditions[column] = record.send(column)
+        end
+        if or_chain
+          or_chain = or_chain.or(model_class.where(conditions))
+        else
+          or_chain = model_class.where(conditions)
+        end
       end
-      if or_chain
-        or_chain = or_chain.or(model_class.where(conditions))
+
+      record_count = RedisMemo.without_memo { or_chain.count }
+      if record_count > bulk_operations_invalidation_limit
+        nil
       else
-        or_chain = model_class.where(conditions)
+        RedisMemo.without_memo { or_chain.to_a }
       end
     end
+  end
 
-    RedisMemo.without_memo { or_chain.to_a }
+  def self.select_by_id(model_class, ids)
+    RedisMemo::Tracer.trace(
+      'redis_memo.memoize_query.invalidation',
+      "#{__method__}##{model_class.name}",
+    ) do
+      RedisMemo.without_memo do
+        model_class.where(model_class.primary_key => ids).to_a
+      end
+    end
+  end
+
+  def self.bulk_operations_invalidation_limit
+    ENV['REDIS_MEMO_BULK_OPERATIONS_INVALIDATION_LIMIT']&.to_i ||
+      RedisMemo::DefaultOptions.bulk_operations_invalidation_limit ||
+      10000
   end
 end
