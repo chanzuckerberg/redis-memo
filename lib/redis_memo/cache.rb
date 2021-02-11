@@ -27,10 +27,7 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   def self.redis
     @@redis ||=
       if RedisMemo::DefaultOptions.connection_pool
-        RedisMemo::ConnectionPool.new(
-          RedisMemo::DefaultOptions.redis,
-          **RedisMemo::DefaultOptions.connection_pool,
-        )
+        RedisMemo::ConnectionPool.new(**RedisMemo::DefaultOptions.connection_pool)
       else
         RedisMemo::DefaultOptions.redis
       end

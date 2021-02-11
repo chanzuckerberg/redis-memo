@@ -13,7 +13,7 @@ class RedisMemo::Options
   )
     @compress = compress.nil? ? true : compress
     @compress_threshold = compress_threshold || 1.kilobyte
-    @redis = redis
+    @redis_config = redis
     @redis_client = nil
     @redis_error_handler = redis_error_handler
     @tracer = tracer
@@ -22,20 +22,18 @@ class RedisMemo::Options
     @expires_in = expires_in
   end
 
-  def redis(&blk)
-    if blk.nil?
-      return @redis_client if @redis_client.is_a?(RedisMemo::Redis)
+  def redis
+    @redis_client ||= RedisMemo::Redis.new(redis_config)
+  end
 
-      if @redis.respond_to?(:call)
-        @redis_client = RedisMemo::Redis.new(@redis.call)
-      elsif @redis
-        @redis_client = RedisMemo::Redis.new(@redis)
-      else
-        @redis_client = RedisMemo::Redis.new
-      end
-    else
-      @redis = blk
-    end
+  def redis_config
+    @redis_config || {}
+  end
+
+  def redis=(config)
+    @redis_config = config
+    @redis_client = nil
+    redis
   end
 
   def tracer(&blk)
@@ -84,7 +82,6 @@ class RedisMemo::Options
   attr_accessor :redis_error_handler
 
   attr_writer :global_cache_key_version
-  attr_writer :redis
   attr_writer :tracer
   attr_writer :logger
 end

@@ -3,8 +3,11 @@ require 'connection_pool'
 require_relative 'redis'
 
 class RedisMemo::ConnectionPool
-  def initialize(redis, **options)
-    @connection_pool = ::ConnectionPool.new(**options) { redis }
+  def initialize(**options)
+    @connection_pool = ::ConnectionPool.new(**options) do
+      # Construct a new client every time the block gets called
+      RedisMemo::Redis.new(RedisMemo::DefaultOptions.redis_config)
+    end
   end
 
   # Avoid method_missing when possible for better performance
