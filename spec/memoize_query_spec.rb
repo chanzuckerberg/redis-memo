@@ -256,6 +256,7 @@ describe RedisMemo::MemoizeQuery do
           Site.import(records, on_duplicate_key_update: {conflict_target: [:id], columns: [:a]})
           expect(Site.a_count(4)).to eq(5)
 
+          Site.import([])
           # site(a: 0) is not affected by the imports
           expect_not_to_use_redis do
             5.times { Site.find(site.id) }
