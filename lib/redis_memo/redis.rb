@@ -31,7 +31,8 @@ class RedisMemo::Redis < Redis::Distributed
   end
 
   class WithReplicas < ::Redis
-    def initialize(options)
+    def initialize(orig_options)
+      options = orig_options.dup
       primary_option = options.shift
       @replicas = options.map do |option|
         option[:logger] ||= RedisMemo::DefaultOptions.logger
