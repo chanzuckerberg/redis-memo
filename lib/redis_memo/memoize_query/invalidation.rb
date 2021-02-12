@@ -126,6 +126,7 @@ class RedisMemo::MemoizeQuery::Invalidation
           if columns_to_update
             RedisMemo::MemoizeQuery::Invalidation.send(
               :select_by_columns,
+              model_class,
               records,
               columns_to_update,
             )
@@ -157,8 +158,9 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
   end
 
-  def self.select_by_columns(records, columns_to_update)
-    model_class = records.first.class
+  def self.select_by_columns(model_class, records, columns_to_update)
+    return [] if records.empty?
+
     or_chain = nil
     columns_to_select = columns_to_update & RedisMemo::MemoizeQuery
       .memoized_columns(model_class)
