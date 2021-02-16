@@ -81,12 +81,26 @@ module RedisMemo::MemoizeMethod
 
   def self.get_or_extract_dependencies(ref, *method_args, &depends_on)
     if RedisMemo::Cache.local_dependency_cache
-      RedisMemo::Cache.local_dependency_cache[ref] ||= {}
-      RedisMemo::Cache.local_dependency_cache[ref][depends_on] ||= {}
-      RedisMemo::Cache.local_dependency_cache[ref][depends_on][method_args] ||= extract_dependencies(ref, *method_args, &depends_on)
+      RedisMemo::Cache.local_dependency_cache[ref.class] ||= {}
+      RedisMemo::Cache.local_dependency_cache[ref.class][depends_on] ||= {}
+      mapped_args = map_depends_on_method_args(depends_on, method_args)
+      RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][mapped_args] ||= extract_dependencies(ref, *method_args, &depends_on)
     else
       extract_dependencies(ref, *method_args, &depends_on)
     end
+  end
+
+  def self.map_depends_on_method_args(depends_on, args)
+    mapped_args = {}
+    unless depends_on.parameters.empty? or args.empty?
+      params = depends_on.parameters.drop(1)
+      params.each_with_index do |param, i|
+        unless param[1] == :_ || param[1].nil?
+          mapped_args[param[1]] = args[i]
+        end
+      end
+    end
+    mapped_args
   end
 
   def self.method_cache_keys(future_contexts)

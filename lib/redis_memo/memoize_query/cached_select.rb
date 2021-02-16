@@ -111,7 +111,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
           sql.gsub(/(\$\d+)/, '?')      # $1 -> ?
              .gsub(/((, *)*\?)+/, '?')  # (?, ?, ? ...) -> (?)
         end,
-      ) do |_, sql, name, binds, **kwargs|
+      ) do |_, sql, _, binds, **|
         RedisMemo::MemoizeQuery::CachedSelect
           .current_query_bind_params
           .params

@@ -262,6 +262,7 @@ describe RedisMemo::Memoizable::Invalidation do
       attr_accessor :calc_count
 
       def calc
+        SpecModel.where(a: a).to_a
         @calc_count += 1
       end
 
@@ -291,6 +292,17 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { record.calc_count }.by(1)
     end
 
+    it 'locally caches computation to extract dependencies for an arel query' do
+      record = SpecModel.create!(a: 1)
+      record.calc_count = 0
+      RedisMemo::Cache.with_local_cache do
+        expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).twice.and_call_original
+        expect {
+          5.times { record.calc }
+        }.to change { record.calc_count }.by(1)
+      end
+    end
+
     it 'falls back to the uncached method when a dependent arel query is not memoized' do
       record = SpecModel.create!(a: 1, not_memoized: 1)
       record.calc_count = 0
@@ -308,7 +320,7 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { record.calc_count }.by(10)
     end
 
-    it 'Supports conditional memoization by raising a WithoutMemoization error' do
+    it 'supports conditional memoization by raising a WithoutMemoization error' do
       record = SpecModel.create!(a: 1)
       record.calc_count = 0
 
