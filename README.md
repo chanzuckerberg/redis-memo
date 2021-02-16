@@ -3,6 +3,7 @@ RedisMemo
 Caching is made easy.
 
 [![Gem Version](https://badge.fury.io/rb/redis-memo.svg)](https://badge.fury.io/rb/redis-memo)
+[![Build Status](https://travis-ci.com/chanzuckerberg/redis-memo.svg?branch=main)](https://travis-ci.com/chanzuckerberg/redis-memo)
 [![codecov](https://codecov.io/gh/chanzuckerberg/redis-memo/branch/main/graph/badge.svg?token=XG83PSWPG0)](https://codecov.io/gh/chanzuckerberg/redis-memo)
 
 A Redis-based version-addressable caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.
