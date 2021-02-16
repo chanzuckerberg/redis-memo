@@ -91,6 +91,18 @@ module RedisMemo::MemoizeMethod
     end
   end
 
+  # We only look at method parameters that the dependency block cares about in order to define its dependent
+  # memos, following the convention that nil or :_ means we don't care about the parameter.
+  # Example:
+  # ```
+  #    def method(param1, param2)
+  #    end
+  #
+  #    memoize_method :method do |_, _, param2|`
+  #      depends_on RedisMemo::Memoizable.new(param2: param2)
+  #    end
+  # ```
+  #  `map_depends_on_method_args(depends_on, ref, [1, 2])` returns { param2 : 2 }
   def self.map_depends_on_method_args(depends_on, ref, args)
     mapped_args = {}
     unless depends_on.parameters.empty? or args.empty?
