@@ -6,7 +6,7 @@ Caching is made easy.
 [![Build Status](https://travis-ci.com/chanzuckerberg/redis-memo.svg?branch=main)](https://travis-ci.com/chanzuckerberg/redis-memo)
 [![codecov](https://codecov.io/gh/chanzuckerberg/redis-memo/branch/main/graph/badge.svg?token=XG83PSWPG0)](https://codecov.io/gh/chanzuckerberg/redis-memo)
 
-A Redis-based version-addressable caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.
+A Redis-based [version-addressable](https://github.com/chanzuckerberg/redis-memo/wiki/Version-Addressable) caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.
 
 ## Getting Started
 ### Add to your Gemfile
@@ -23,7 +23,7 @@ When a method does not have any dependencies other than its arguments, it is con
 class FibonacciSequence
   extend RedisMemo::MemoizeMethod
 
-  def [](i); i &lt;= 2 ? 1 : self[i - 1] + self[i - 2]; end
+  def [](i); i <= 2 ? 1 : self[i - 1] + self[i - 2]; end
   memoize_method :[]
 end
 ```
@@ -99,9 +99,9 @@ end
 ```
 
 ## How does it work?
-RedisMemo is a version-addressable caching system: It separates the versions from the cache results.
+RedisMemo is a [version-addressable](https://github.com/chanzuckerberg/redis-memo/wiki/Version-Addressable) caching system: It separates the versions from the cache results.
 
-Two Redis Queries Per Call: In order to find a cached result, RedisMemo makes an additional round trip to Redis, retrieves the latest versions of its dependencies, then calculate a cache key that represents the latest version of the cached result.
+Two Redis Queries Per Call: In order to find a cached result, RedisMemo makes an additional round trip to Redis, retrieves the latest versions of its dependencies, then calculates a cache key that represents the latest version of the cached result.
 
 This design allows RedisMemo to:
 
