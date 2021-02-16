@@ -4,6 +4,7 @@ require_relative 'future'
 require_relative 'memoizable'
 require_relative 'middleware'
 require_relative 'options'
+require 'byebug'
 
 module RedisMemo::MemoizeMethod
   def memoize_method(method_name, method_id: nil, **options, &depends_on)
@@ -83,20 +84,20 @@ module RedisMemo::MemoizeMethod
     if RedisMemo::Cache.local_dependency_cache
       RedisMemo::Cache.local_dependency_cache[ref.class] ||= {}
       RedisMemo::Cache.local_dependency_cache[ref.class][depends_on] ||= {}
-      mapped_args = map_depends_on_method_args(depends_on, method_args)
+      mapped_args = map_depends_on_method_args(depends_on, ref, method_args)
       RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][mapped_args] ||= extract_dependencies(ref, *method_args, &depends_on)
     else
       extract_dependencies(ref, *method_args, &depends_on)
     end
   end
 
-  def self.map_depends_on_method_args(depends_on, args)
+  def self.map_depends_on_method_args(depends_on, ref, args)
     mapped_args = {}
     unless depends_on.parameters.empty? or args.empty?
-      params = depends_on.parameters.drop(1)
-      params.each_with_index do |param, i|
+      depends_on_args = [ref] + args.clone
+      depends_on.parameters.each_with_index do |param, i|
         unless param[1] == :_ || param[1].nil?
-          mapped_args[param[1]] = args[i]
+          mapped_args[param[1]] = depends_on_args[i]
         end
       end
     end
