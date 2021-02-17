@@ -26,14 +26,18 @@ class RedisMemo::Memoizable::Dependency
         instance_exec(&memo.depends_on)
       end
     when ActiveRecord::Relation
-      extracted = extract_dependencies_for_relation(dependency)
+      extracted = self.class.extract_from_relation(dependency)
       nodes.merge!(extracted.nodes)
-    when UsingActiveRecord
-      [
-        dependency.redis_memo_class_memoizable,
-        RedisMemo::MemoizeQuery.create_memo(dependency, **conditions),
-      ].each do |memo|
+    when RedisMemo::MemoizeQuery::CachedSelect::BindParams
+      # A private API
+      dependency.params.each do |model, attrs_set|
+        memo = model.redis_memo_class_memoizable
         nodes[memo.cache_key] = memo
+
+        attrs_set.each do |attrs|
+          memo = RedisMemo::MemoizeQuery.create_memo(model, **attrs)
+          nodes[memo.cache_key] = memo
+        end
       end
     else
       raise(
@@ -43,24 +47,21 @@ class RedisMemo::Memoizable::Dependency
     end
   end
 
-  def extract_dependencies_for_relation(relation)
+  private
+
+  def self.extract_from_relation(relation)
     # Extract the dependent memos of an Arel without calling exec_query to actually execute the query
     RedisMemo::MemoizeQuery::CachedSelect.with_new_query_context do
       connection = ActiveRecord::Base.connection
       query, binds, _ = connection.send(:to_sql_and_binds, relation.arel)
       RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
       is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
-        raise(
-          RedisMemo::WithoutMemoization,
-          "Arel query is not cached using RedisMemo."
-        ) unless is_query_cached
-        extracted_dependency = connection.dependency_of(:exec_query, query, nil, binds)
-    end
-  end
 
-  class UsingActiveRecord
-    def self.===(dependency)
-      RedisMemo::MemoizeQuery.using_active_record?(dependency)
+      unless is_query_cached
+        raise RedisMemo::WithoutMemoization, 'Arel query is not cached using RedisMemo'
+      end
+
+      connection.dependency_of(:exec_query, query, nil, binds)
     end
   end
 end
