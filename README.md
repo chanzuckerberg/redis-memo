@@ -106,7 +106,7 @@ Two Redis Queries Per Call: In order to find a cached result, RedisMemo makes an
 This design allows RedisMemo to:
 
 *   Have a clean API
-    *   Add caching without invading any business logic
+    *   [Add caching without invading any business logic](https://github.com/chanzuckerberg/redis-memo/wiki/Add-caching-without-changing-any-call-sites)
     *   Reuse dependencies
 *   Provide auto-invalidation (with ActiveRecord)
 *   Ensure consistency during deployments
