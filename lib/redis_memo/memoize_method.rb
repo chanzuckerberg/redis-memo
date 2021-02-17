@@ -108,11 +108,11 @@ module RedisMemo::MemoizeMethod
       depends_on_args = [ref] + args
       depends_on_parameters = depends_on.parameters.clone
       # A double splat should always be the last parameter
-      if depends_on_parameters[-1][0] == :keyrest && depends_on_args[-1].is_a?(Hash)
+      if depends_on_parameters[-1].size == 2 && depends_on_parameters[-1][0] == :keyrest && depends_on_args[-1].is_a?(Hash)
         mapped_args[depends_on_parameters.pop[1]] = depends_on_args.pop
       end
       depends_on_parameters.each_with_index do |param, i|
-        unless param[1] == :_ || param[1].nil?
+        unless param.size != 2 || param[1] == :_
           # If it's a single splat, take the rest of the arguments
           if param[0] == :rest
             mapped_args[param[1]] = depends_on_args[i..-1]
