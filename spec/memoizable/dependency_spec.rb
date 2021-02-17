@@ -155,6 +155,44 @@ describe RedisMemo::Memoizable::Invalidation do
           5.times { obj.calc(val) }
         end
       end
+
+      context 'for different parameter formats in the dependency block' do
+        it 'works using a dependency block with a splat' do
+          obj.class_eval do
+            def test(*args, **kwargs); end
+            memoize_method :test do |_, *args|; end
+          end
+          RedisMemo::Cache.with_local_cache do
+            expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).thrice.and_call_original
+            5.times { obj.test(1) }
+            5.times { obj.test(1, 1, 1) }
+            5.times { obj.test(1, 1, 1, param: 1) }
+          end
+        end
+        it 'works using a dependency block with a double splat' do
+          obj.class_eval do
+            def test(*args, **kwargs); end
+            memoize_method :test do |_, *args, **kwargs|; end
+          end
+          RedisMemo::Cache.with_local_cache do
+            expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).twice.and_call_original
+            5.times { obj.test(1, 1, param: 1) }
+            5.times { obj.test(1, 1, param: 1, param2: 1) }
+          end
+        end
+
+        it 'works using a dependency block with nil splats' do
+          obj.class_eval do
+            def test(*args); end
+            memoize_method :test do |_, *, **|; end
+          end
+          RedisMemo::Cache.with_local_cache do
+            expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).once.and_call_original
+            5.times { obj.test(1, 1) }
+            5.times { obj.test(1, 2) }
+          end
+        end
+      end
     end
 
     it 'raises an error when it depends on a non-memoized method' do
