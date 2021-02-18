@@ -38,7 +38,6 @@ class RedisMemo::MemoizeQuery::Invalidation
       increment_counter
       touch_all
       update_column update_columns update_all update_counters
-      upsert upsert_all
     ).each do |method_name|
       # Example: Model.update_all
       rewrite_default_method(
@@ -67,6 +66,15 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
 
     %i(
+      upsert upsert_all
+    ).each do |method_name|
+      rewrite_upsert_method(
+        model_class,
+        method_name,
+      )
+    end
+
+    %i(
       import import!
     ).each do |method_name|
       rewrite_import_method(
@@ -83,6 +91,28 @@ class RedisMemo::MemoizeQuery::Invalidation
     result = blk.call
     records = select_by_new_ids(model_class, current_id)
     RedisMemo::MemoizeQuery.invalidate(*records) unless records.empty?
+    result
+  end
+
+  def self.invalidate_records_by_conflict_target(model_class, records:, conflict_target: nil, &blk)
+    if conflict_target.nil?
+      # When the conflict_target is not set, we are basically inserting new
+      # records since duplicate rows are simply skipped
+      return invalidate_new_records(model_class, &blk)
+    end
+
+    relation = build_relation_by_conflict_target(model_class, records, conflict_target)
+    # Invalidate records before updating
+    records = select_by_conflict_target_relation(model_class, relation)
+    RedisMemo::MemoizeQuery.invalidate(*records) unless records.empty?
+
+    # Perform updating
+    result = blk.call
+
+    # Invalidate records after updating
+    records = select_by_conflict_target_relation(model_class, relation)
+    RedisMemo::MemoizeQuery.invalidate(*records) unless records.empty?
+
     result
   end
 
@@ -125,14 +155,34 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
   end
 
-  def self.rewrite_import_method(model_class, method_name)
+  def self.rewrite_upsert_method(model_class, method_name)
     return unless model_class.respond_to?(method_name)
 
-    # This optimization to avoid over-invalidation only works on postgres
-    unless ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
-      rewrite_default_method(model_class, model_class, method_name, class_method: true)
-      return
+    model_class.singleton_class.class_eval do
+      alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
+
+      define_method method_name do |attributes, unique_by: nil, **kwargs, &blk|
+        RedisMemo::MemoizeQuery::Invalidation.invalidate_records_by_conflict_target(
+          model_class,
+          records: nil, # not used
+          # upsert does not support on_duplicate_key_update yet at activerecord
+          # HEAD (6.1.3)
+          conflict_target: nil,
+        ) do
+          send(
+            :"#{method_name}_without_redis_memo_invalidation",
+            attributes,
+            unique_by: unique_by,
+            **kwargs,
+            &blk
+          )
+        end
+      end
     end
+  end
+
+  def self.rewrite_import_method(model_class, method_name)
+    return unless model_class.respond_to?(method_name)
 
     model_class.singleton_class.class_eval do
       alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
@@ -142,107 +192,52 @@ class RedisMemo::MemoizeQuery::Invalidation
       define_method method_name do |*args, &blk|
         options = args.last.is_a?(Hash) ? args.last : {}
         records = args[args.last.is_a?(Hash) ? -2 : -1]
-        columns_to_update = options[:on_duplicate_key_update]
-        if columns_to_update.is_a?(Hash)
-          columns_to_update = columns_to_update[:columns]
-        end
-
-        # When the on_duplicate_key_update options is not set, we are basically
-        # inserting new records
-        unless columns_to_update
-          return RedisMemo::MemoizeQuery::Invalidation.invalidate_new_records(model_class) do
-            send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
+        on_duplicate_key_update = options[:on_duplicate_key_update]
+        conflict_target =
+          case on_duplicate_key_update
+          when Hash
+            # The conflict_target option is only supported in PostgreSQL. In
+            # MySQL, the primary_key is used as the conflict_target
+            on_duplicate_key_update[:conflict_target] || [model_class.primary_key.to_sym]
+          when Array
+            # The default conflict_target is just the primary_key
+            [model_class.primary_key.to_sym]
+          else
+            # Ignore duplicate rows
+            nil
           end
-        end
 
-        if records.last.is_a?(Hash)
+        if conflict_target && records.last.is_a?(Hash)
           records.map! { |hash| model_class.new(hash) }
         end
 
-        # Invalidate the records before and after the import to resolve
-        # - default values filled by the database
-        # - updates on conflict conditions
-        records_to_invalidate =
-          if columns_to_update
-            RedisMemo::MemoizeQuery::Invalidation.send(
-              :select_by_columns,
-              model_class,
-              records,
-              columns_to_update,
-            )
-          else
-            []
-          end
-
-        result = send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
-
-        # Offload the records to invalidate while selecting the next set of
-        # records to invalidate
-        case records_to_invalidate
-        when Array
-          RedisMemo::MemoizeQuery.invalidate(*records_to_invalidate) unless records_to_invalidate.empty?
-
-          RedisMemo::MemoizeQuery.invalidate(*RedisMemo::MemoizeQuery::Invalidation.send(
-            :select_by_id,
-            model_class,
-            # Not all databases support "RETURNING", which is useful when
-            # invaldating records after bulk creation
-            result.ids,
-          ))
-        else
-          RedisMemo::MemoizeQuery.invalidate_all(model_class)
+        RedisMemo::MemoizeQuery::Invalidation.invalidate_records_by_conflict_target(
+          model_class,
+          records: records,
+          conflict_target: conflict_target,
+        ) do
+          send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
-
-        result
       end
     end
   end
 
-  def self.select_by_columns(model_class, records, columns_to_update)
-    return [] if records.empty?
-
+  def self.build_relation_by_conflict_target(model_class, records, conflict_target)
     or_chain = nil
-    columns_to_select = columns_to_update & RedisMemo::MemoizeQuery
-      .memoized_columns(model_class)
-      .to_a.flatten.uniq
 
-    # Nothing to invalidate here
-    return [] if columns_to_select.empty?
-
-    RedisMemo::Tracer.trace(
-      'redis_memo.memoize_query.invalidation',
-      "#{__method__}##{model_class.name}",
-    ) do
-      records.each do |record|
-        conditions = {}
-        columns_to_select.each do |column|
-          conditions[column] = record.send(column)
-        end
-        if or_chain
-          or_chain = or_chain.or(model_class.where(conditions))
-        else
-          or_chain = model_class.where(conditions)
-        end
+    records.each do |record|
+      conditions = {}
+      conflict_target.each do |column|
+        conditions[column] = record.send(column)
       end
-
-      record_count = RedisMemo.without_memo { or_chain.count }
-      if record_count > bulk_operations_invalidation_limit
-        nil
+      if or_chain
+        or_chain = or_chain.or(model_class.where(conditions))
       else
-        RedisMemo.without_memo { or_chain.to_a }
+        or_chain = model_class.where(conditions)
       end
     end
-  end
 
-  def self.select_by_id(model_class, ids)
-    RedisMemo::Tracer.trace(
-      'redis_memo.memoize_query.invalidation',
-      "#{__method__}##{model_class.name}",
-    ) do
-      RedisMemo.without_memo do
-        model_class.where(model_class.primary_key => ids).to_a
-      end
-    end
+    or_chain
   end
 
   def self.select_by_new_ids(model_class, target_id)
@@ -258,9 +253,12 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
   end
 
-  def self.bulk_operations_invalidation_limit
-    ENV['REDIS_MEMO_BULK_OPERATIONS_INVALIDATION_LIMIT']&.to_i ||
-      RedisMemo::DefaultOptions.bulk_operations_invalidation_limit ||
-      10000
+  def self.select_by_conflict_target_relation(model_class, relation)
+    RedisMemo::Tracer.trace(
+      'redis_memo.memoize_query.invalidation',
+      "#{__method__}##{model_class.name}",
+    ) do
+      RedisMemo.without_memo { relation.reload }
+    end
   end
 end
