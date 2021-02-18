@@ -161,11 +161,16 @@ describe RedisMemo::Memoizable::Invalidation do
       klass = Class.new do
         extend RedisMemo::MemoizeMethod
       end
-      obj = klass.new
+      let (:obj) { obj = klass.new }
 
-      def add_test_case(&blk)
+      def add_test_case(mapped_args, &blk)
+        # Expect dependencies to only get extracted once
         expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).once.and_call_original
         blk.call
+
+        # Expect that the mapped args are correct
+        depends_on = obj.singleton_class.instance_variable_get(:@__redis_memo_method_dependencies)[:test]
+        expect(RedisMemo::Cache.local_dependency_cache[obj.class][depends_on].key?(mapped_args)).to be true
       end
 
       before(:each) do
@@ -177,9 +182,9 @@ describe RedisMemo::Memoizable::Invalidation do
           memoize_method :test do |_, *args|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case { 5.times { obj.test(1, 2, 3) } }
-          add_test_case { 5.times { obj.test(1, 2, 3, 4) } }
-          add_test_case { 5.times { obj.test(1, 2, 3, 4, a: 1) } }
+          add_test_case({args: [1, 2, 3]}) { 5.times { obj.test(1, 2, 3) } }
+          add_test_case({args: [1, 2, 3, 4]}) { 5.times { obj.test(1, 2, 3, 4) } }
+          add_test_case({args: [1, 2, 3, 4, {a: 1}]}) { 5.times { obj.test(1, 2, 3, 4, a: 1) } }
         end
       end
 
@@ -188,9 +193,9 @@ describe RedisMemo::Memoizable::Invalidation do
           memoize_method :test do |_, *args, **kwargs|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case { 5.times { obj.test(1, 2, 3) } }
-          add_test_case { 5.times { obj.test(1, 2, 3, a: 1) } }
-          add_test_case { 5.times { obj.test(1, 2, 3, a: 1, b: 1) } }
+          add_test_case({args: [1, 2, 3], kwargs: nil}) { 5.times { obj.test(1, 2, 3) } }
+          add_test_case({args: [1, 2, 3], kwargs: {a: 1}}) { 5.times { obj.test(1, 2, 3, a: 1) } }
+          add_test_case({args: [1, 2, 3], kwargs: {a: 1, b: 1}}) { 5.times { obj.test(1, 2, 3, a: 1, b: 1) } }
         end
       end
 
@@ -199,7 +204,7 @@ describe RedisMemo::Memoizable::Invalidation do
           memoize_method :test do |_, *, **|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case do
+          add_test_case({}) do
             5.times { obj.test(1, 2, 3) }
             5.times { obj.test(1, 2, 3, 4) }
             5.times { obj.test(1, 2, 3, 4, a: 1) }
@@ -212,9 +217,9 @@ describe RedisMemo::Memoizable::Invalidation do
           memoize_method :test do |_, a, *args, b: nil, **kwargs|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case { 5.times { obj.test(1, 2, 3, 4, b: 5, c: 6) } }
-          add_test_case { 5.times { obj.test(1, 2, 3, 4) } }
-          add_test_case { 5.times { obj.test(1, 2, 3, 4, {a: 1}) } }
+          add_test_case({a: 1, args: [2, 3, 4], b: 5, kwargs: {c: 6}}) { 5.times { obj.test(1, 2, 3, 4, b: 5, c: 6) } }
+          add_test_case({a: 1, args: [2, 3, 4], b: nil, kwargs: nil}) { 5.times { obj.test(1, 2, 3, 4) } }
+          add_test_case({a: 1, args: [2, 3, 4], b: nil, kwargs: {a: 1}}) { 5.times { obj.test(1, 2, 3, 4, {a: 1}) } }
         end
       end
     end
