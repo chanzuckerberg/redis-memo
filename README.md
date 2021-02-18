@@ -107,7 +107,7 @@ This design allows RedisMemo to:
 
 *   Have a clean API
     *   Add caching without invading any business logic
-    *   Reuse dependencies
+    *   [Reuse dependencies](https://github.com/chanzuckerberg/redis-memo/wiki/Hierarchical-Caching)
 *   Provide auto-invalidation (with ActiveRecord)
 *   Ensure consistency during deployments
 *   Ensure consistency with multi-version concurrency control (with ActiveRecord)
