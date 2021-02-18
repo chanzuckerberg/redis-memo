@@ -106,16 +106,19 @@ module RedisMemo::MemoizeMethod
     mapped_args = {}
     unless depends_on.parameters.empty? or args.empty?
       depends_on_args = [ref] + args
-      depends_on_parameters = depends_on.parameters.clone
-      # A double splat should always be the last parameter
-      if depends_on_parameters[-1].size == 2 && depends_on_parameters[-1][0] == :keyrest && depends_on_args[-1].is_a?(Hash)
-        mapped_args[depends_on_parameters.pop[1]] = depends_on_args.pop
-      end
-      depends_on_parameters.each_with_index do |param, i|
+      depends_on.parameters.each_with_index do |param, i|
         unless param.size != 2 || param[1] == :_
-          # If it's a single splat, take the rest of the arguments
+          # If it's a single splat,
           if param[0] == :rest
-            mapped_args[param[1]] = depends_on_args[i..-1]
+            # take the rest of the arguments if this is the last parameter
+            if i == depends_on.parameters.size - 1
+              mapped_args[param[1]] = depends_on_args[i..-1]
+            # find the last element that isn't a hash, and replace those elements with a single array
+            else
+              splat_args = depends_on_args[i..-1].select { |x| !x.is_a?(Hash) }
+              depends_on_args[i..-1] = [splat_args, *depends_on_args[(i + splat_args.size)..-1]]
+              mapped_args[param[1]] = splat_args
+            end
           else
             mapped_args[param[1]] = depends_on_args[i]
           end

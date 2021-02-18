@@ -155,42 +155,66 @@ describe RedisMemo::Memoizable::Invalidation do
           5.times { obj.calc(val) }
         end
       end
+    end
 
-      context 'for different parameter formats in the dependency block' do
-        it 'works using a dependency block with a splat' do
-          obj.class_eval do
-            def test(*args, **kwargs); end
-            memoize_method :test do |_, *args|; end
-          end
-          RedisMemo::Cache.with_local_cache do
-            expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).thrice.and_call_original
-            5.times { obj.test(1) }
-            5.times { obj.test(1, 1, 1) }
-            5.times { obj.test(1, 1, 1, param: 1) }
+    context 'for different parameter formats in the dependency block' do
+      klass = Class.new do
+        extend RedisMemo::MemoizeMethod
+      end
+      obj = klass.new
+
+      def add_test_case(&blk)
+        expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).once.and_call_original
+        blk.call
+      end
+
+      before(:each) do
+        obj.class_eval { def test(*args, **kwargs); end }
+      end
+
+      it 'works using a dependency block with a splat' do
+        obj.class_eval do
+          memoize_method :test do |_, *args|; end
+        end
+        RedisMemo::Cache.with_local_cache do
+          add_test_case { 5.times { obj.test(1, 2, 3) } }
+          add_test_case { 5.times { obj.test(1, 2, 3, 4) } }
+          add_test_case { 5.times { obj.test(1, 2, 3, 4, a: 1) } }
+        end
+      end
+
+      it 'works using a dependency block with a double splat' do
+        obj.class_eval do
+          memoize_method :test do |_, *args, **kwargs|; end
+        end
+        RedisMemo::Cache.with_local_cache do
+          add_test_case { 5.times { obj.test(1, 2, 3) } }
+          add_test_case { 5.times { obj.test(1, 2, 3, a: 1) } }
+          add_test_case { 5.times { obj.test(1, 2, 3, a: 1, b: 1) } }
+        end
+      end
+
+      it 'works using a dependency block with nil splats' do
+        obj.class_eval do
+          memoize_method :test do |_, *, **|; end
+        end
+        RedisMemo::Cache.with_local_cache do
+          add_test_case do
+            5.times { obj.test(1, 2, 3) }
+            5.times { obj.test(1, 2, 3, 4) }
+            5.times { obj.test(1, 2, 3, 4, a: 1) }
           end
         end
-        it 'works using a dependency block with a double splat' do
-          obj.class_eval do
-            def test(*args, **kwargs); end
-            memoize_method :test do |_, *args, **kwargs|; end
-          end
-          RedisMemo::Cache.with_local_cache do
-            expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).twice.and_call_original
-            5.times { obj.test(1, 1, param: 1) }
-            5.times { obj.test(1, 1, param: 1, param2: 1) }
-          end
-        end
+      end
 
-        it 'works using a dependency block with nil splats' do
-          obj.class_eval do
-            def test(*args); end
-            memoize_method :test do |_, *, **|; end
-          end
-          RedisMemo::Cache.with_local_cache do
-            expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).once.and_call_original
-            5.times { obj.test(1, 1) }
-            5.times { obj.test(1, 2) }
-          end
+      it 'works with a mix of keyword arguments and double splats' do
+        obj.class_eval do
+          memoize_method :test do |_, a, *args, b: nil, **kwargs|; end
+        end
+        RedisMemo::Cache.with_local_cache do
+          add_test_case { 5.times { obj.test(1, 2, 3, 4, b: 5, c: 6) } }
+          add_test_case { 5.times { obj.test(1, 2, 3, 4) } }
+          add_test_case { 5.times { obj.test(1, 2, 3, 4, {a: 1}) } }
         end
       end
     end
