@@ -83,15 +83,15 @@ module RedisMemo::MemoizeMethod
     if RedisMemo::Cache.local_dependency_cache
       RedisMemo::Cache.local_dependency_cache[ref.class] ||= {}
       RedisMemo::Cache.local_dependency_cache[ref.class][depends_on] ||= {}
-      mapped_args = map_depends_on_method_args(depends_on, ref, method_args)
+      mapped_args = exclude_anonymous_args(depends_on, ref, method_args)
       RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][mapped_args] ||= extract_dependencies(ref, *method_args, &depends_on)
     else
       extract_dependencies(ref, *method_args, &depends_on)
     end
   end
 
-  # We only look at method parameters that the dependency block cares about in order to define its dependent
-  # memos, following the convention that nil or :_ means we don't care about the parameter.
+  # We only look at known method parameters in the dependency block in order to define its dependent
+  # memos and ignore anonymous parameters, following the convention that nil or :_ is an anonymous parameter.
   # Example:
   # ```
   #    def method(param1, param2)
@@ -101,8 +101,8 @@ module RedisMemo::MemoizeMethod
   #      depends_on RedisMemo::Memoizable.new(param2: param2)
   #    end
   # ```
-  #  `map_depends_on_method_args(depends_on, ref, [1, 2])` returns { param2 : 2 }
-  def self.map_depends_on_method_args(depends_on, ref, args)
+  #  `exclude_anonymous_args(depends_on, ref, [1, 2])` returns { param2 : 2 }
+  def self.exclude_anonymous_args(depends_on, ref, args)
     mapped_args = {}
     unless depends_on.parameters.empty? or args.empty?
       depends_on_args = [ref] + args
