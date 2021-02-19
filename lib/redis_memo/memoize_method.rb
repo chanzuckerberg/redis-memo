@@ -4,6 +4,7 @@ require_relative 'future'
 require_relative 'memoizable'
 require_relative 'middleware'
 require_relative 'options'
+require 'byebug'
 
 module RedisMemo::MemoizeMethod
   def memoize_method(method_name, method_id: nil, **options, &depends_on)
@@ -83,14 +84,14 @@ module RedisMemo::MemoizeMethod
     if RedisMemo::Cache.local_dependency_cache
       RedisMemo::Cache.local_dependency_cache[ref.class] ||= {}
       RedisMemo::Cache.local_dependency_cache[ref.class][depends_on] ||= {}
-      mapped_args = exclude_anonymous_args(depends_on, ref, method_args)
-      RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][mapped_args] ||= extract_dependencies(ref, *method_args, &depends_on)
+      named_args = exclude_anonymous_args(depends_on, ref, method_args)
+      RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][named_args] ||= extract_dependencies(ref, *method_args, &depends_on)
     else
       extract_dependencies(ref, *method_args, &depends_on)
     end
   end
 
-  # We only look at known method parameters in the dependency block in order to define its dependent
+  # We only look at named method parameters in the dependency block in order to define its dependent
   # memos and ignore anonymous parameters, following the convention that nil or :_ is an anonymous parameter.
   # Example:
   # ```
@@ -101,39 +102,41 @@ module RedisMemo::MemoizeMethod
   #      depends_on RedisMemo::Memoizable.new(param2: param2)
   #    end
   # ```
-  #  `exclude_anonymous_args(depends_on, ref, [1, 2])` returns { param2 : 2 }
+  #  `exclude_anonymous_args(depends_on, ref, [1, 2])` returns [2]
   def self.exclude_anonymous_args(depends_on, ref, args)
-    mapped_args = {}
-    unless depends_on.parameters.empty? or args.empty?
-      depends_on_args = [ref] + args
-      j = 0
+    return [] if depends_on.parameters.empty? or args.empty?
 
-      depends_on.parameters.each_with_index do |param, i|
-        unless param.size != 2 || param[1] == :_
-          case param[0]
-          # If the parameter is a splat, we take the rest of the arguments if it's the last parameter. Otherwise,
-          # parameters that come after a splat can only be keyword args / hashes.
-          when :rest
-            if i == depends_on.parameters.size - 1
-              mapped_args[param[1]] = depends_on_args[j..-1]
-            else
-              single_splat_args = depends_on_args[j..-1].select { |x| !x.is_a?(Hash) }
-              mapped_args[param[1]] = single_splat_args
-              j += single_splat_args.size
-            end
-          when :key, :keyreq
-            mapped_args[param[1]] = depends_on_args[j].try(:[], param[1])
-            depends_on_args[j]&.delete(param[1])
-          else
-            mapped_args[param[1]] = depends_on_args[j]
-            j += 1
-          end
+    positional_args = []
+    kwargs = {}
+    named_rest = false
+    depends_on_args = [ref] + args
+    options = depends_on_args.extract_options!&.clone
+
+    depends_on.parameters.each_with_index do |param, i|
+      unless param.size != 2 || param.last == :_
+        # Defined by https://github.com/ruby/ruby/blob/22b8ddfd1049c3fd1e368684c4fd03bceb041b3a/proc.c#L3048-L3059
+        case param.first
+        when :opt, :req
+          positional_args << depends_on_args[i]
+        when :rest
+          named_rest = true
+          positional_args.concat(depends_on_args[i..-1])
+        when :key, :keyreq
+          kwargs[param.last] = options.delete(param.last)
+        when :keyrest
+          kwargs.merge!(options)
         else
-          j += 1
+          raise(RedisMemo::ArgumentError, "#{param.first} argument isn't supported in the dependency block")
         end
       end
     end
-    mapped_args
+    if !kwargs.empty?
+      positional_args + [kwargs]
+    elsif named_rest && !options.empty?
+        positional_args + [options]
+    else
+      positional_args
+    end
   end
 
   def self.method_cache_keys(future_contexts)
