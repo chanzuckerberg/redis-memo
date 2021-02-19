@@ -4,7 +4,6 @@ require_relative 'future'
 require_relative 'memoizable'
 require_relative 'middleware'
 require_relative 'options'
-require 'byebug'
 
 module RedisMemo::MemoizeMethod
   def memoize_method(method_name, method_id: nil, **options, &depends_on)
