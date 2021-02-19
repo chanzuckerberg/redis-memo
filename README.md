@@ -7,7 +7,7 @@ RedisMemo
 A Redis-based [version-addressable](https://github.com/chanzuckerberg/redis-memo/wiki/Version-Addressable) caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.
 
 - [x] 😎 Caching is made easy: Speeding up expensive logic with one line of code 
-- [x] ⚔️ Battle-tested at CZI: Serving more than 500K users, 2K requests every second
+- [x] ⚔️ Battle-tested at [CZI](https://github.com/chanzuckerberg): Serving more than 500K users, 2K requests every second
 
 ## Getting Started
 ### Add to your Gemfile
