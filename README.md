@@ -1,12 +1,13 @@
 RedisMemo
 =========
-Caching is made easy.
-
 [![Gem Version](https://badge.fury.io/rb/redis-memo.svg)](https://badge.fury.io/rb/redis-memo)
 [![Build Status](https://travis-ci.com/chanzuckerberg/redis-memo.svg?branch=main)](https://travis-ci.com/chanzuckerberg/redis-memo)
 [![codecov](https://codecov.io/gh/chanzuckerberg/redis-memo/branch/main/graph/badge.svg?token=XG83PSWPG0)](https://codecov.io/gh/chanzuckerberg/redis-memo)
 
 A Redis-based [version-addressable](https://github.com/chanzuckerberg/redis-memo/wiki/Version-Addressable) caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.
+
+- [x] 😎 Caching is made easy: Speeding up expensive logic with one line of code 
+- [x] ⚔️ Battle-tested at CZI: Serving more than 500K users, 2K requests every second
 
 ## Getting Started
 ### Add to your Gemfile
