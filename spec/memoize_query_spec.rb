@@ -256,9 +256,42 @@ describe RedisMemo::MemoizeQuery do
           Site.import(records, on_duplicate_key_update: {conflict_target: [:id], columns: [:a]})
           expect(Site.a_count(4)).to eq(5)
 
+          Site.import([])
           # site(a: 0) is not affected by the imports
           expect_not_to_use_redis do
             5.times { Site.find(site.id) }
+          end
+        end
+      end
+
+      it 'invalidates all records if there are too many records to invalidate' do
+        allow(RedisMemo::DefaultOptions).to receive(:bulk_operations_invalidation_limit).and_return(2)
+        expect(RedisMemo::MemoizeQuery).to receive(:invalidate_all).once.and_call_original
+
+        records = 3.times.map { Site.create!(a: 0) }
+        new_records = [Site.create!(a: 1), Site.create!(a: 1)]
+        new_records.each do |record|
+          record.a = 0
+          # it does not access this field for querying records to invalidate
+          expect(record).not_to receive(:not_memoized)
+        end
+
+        RedisMemo::Cache.with_local_cache do
+          records.each do |record|
+            Site.find(record.id)
+
+            # Cached locally
+            expect_not_to_use_redis do
+              Site.find(record.id)
+            end
+          end
+
+          Site.import(new_records, on_duplicate_key_update: [:a, :not_memoized])
+
+          records.each do |record|
+            expect_to_eq_with_or_without_redis do
+              Site.find(record.id)
+            end
           end
         end
       end

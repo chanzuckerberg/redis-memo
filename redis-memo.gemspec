@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name          = 'redis-memo'
-  s.version       = '0.0.0.beta.3'
+  s.version       = '0.0.0.beta.6'
   s.date          = '2020-10-31'
   s.summary       = 'A Redis-based version-addressable caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.'
   s.authors       = ['Chan Zuckerberg Initiative']
@@ -16,6 +16,7 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'activesupport', '>= 5.2'
   s.add_dependency 'redis', '>= 4.0.1'
+  s.add_dependency 'connection_pool', '>= 2.2.3'
 
   s.add_development_dependency 'activerecord', '>= 5.2'
   s.add_development_dependency 'activerecord-import'

@@ -112,14 +112,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
              .gsub(/((, *)*\?)+/, '?')  # (?, ?, ? ...) -> (?)
         end,
       ) do |_, sql, _, binds, **|
-        RedisMemo::MemoizeQuery::CachedSelect
-          .current_query_bind_params
-          .params
-          .each do |model, attrs_set|
-            attrs_set.each do |attrs|
-              depends_on model, **attrs
-            end
-          end
+        depends_on RedisMemo::MemoizeQuery::CachedSelect.current_query_bind_params
 
         depends_on RedisMemo::Memoizable.new(
           __redis_memo_memoize_query_memoize_query_sql__: sql,
