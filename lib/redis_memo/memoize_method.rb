@@ -158,7 +158,7 @@ module RedisMemo::MemoizeMethod
       positional_args
     end
   end
-
+private
   def self.is_named?(param)
     param.size == 2 && param.last != :_
   end
