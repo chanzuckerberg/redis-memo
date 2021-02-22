@@ -107,35 +107,60 @@ module RedisMemo::MemoizeMethod
 
     positional_args = []
     kwargs = {}
-    named_rest = false
     depends_on_args = [ref] + args
     options = depends_on_args.extract_options!
 
+    # Keep track of the splat start index, and the number of positional args before and after the splat,
+    # so we can map which args belong to positional args and which args belong to the splat.
+    named_splat = false
+    splat_index = nil
+    num_positional_args_after_splat = 0
+    num_positional_args_before_splat = 0
+
     depends_on.parameters.each_with_index do |param, i|
-      unless param.size != 2 || param.last == :_
-        # Defined by https://github.com/ruby/ruby/blob/22b8ddfd1049c3fd1e368684c4fd03bceb041b3a/proc.c#L3048-L3059
-        case param.first
-        when :opt, :req
-          positional_args << depends_on_args[i]
-        when :rest
-          named_rest = true
-          positional_args.concat(depends_on_args[i..-1])
-        when :key, :keyreq
-          kwargs[param.last] = options[param.last]
-        when :keyrest
-          kwargs.merge!(options)
+      # Defined by https://github.com/ruby/ruby/blob/22b8ddfd1049c3fd1e368684c4fd03bceb041b3a/proc.c#L3048-L3059
+      case param.first
+      when :opt, :req
+        if splat_index
+          num_positional_args_after_splat += 1
         else
-          raise(RedisMemo::ArgumentError, "#{param.first} argument isn't supported in the dependency block")
+          num_positional_args_before_splat += 1
         end
+      when :rest
+        named_splat = is_named?(param)
+        splat_index = i
+      when :key, :keyreq
+        kwargs[param.last] = options[param.last] if is_named?(param)
+      when :keyrest
+        kwargs.merge!(options) if is_named?(param)
+      else
+        raise(RedisMemo::ArgumentError, "#{param.first} argument isn't supported in the dependency block")
       end
     end
+
+    # Determine the named positional and splat arguments after we know the # of pos. arguments before and after splat
+    after_splat_index = depends_on_args.size - num_positional_args_after_splat
+    depends_on_args.each_with_index do |arg, i|
+      # if the index is within the splat
+      if i >= num_positional_args_before_splat && i < after_splat_index
+        positional_args << arg if named_splat
+      else
+        j = i < num_positional_args_before_splat ? i : i - (after_splat_index - splat_index) - 1
+        positional_args << arg if is_named?(depends_on.parameters[j])
+      end
+    end
+
     if !kwargs.empty?
       positional_args + [kwargs]
-    elsif named_rest && !options.empty?
+    elsif named_splat && !options.empty?
         positional_args + [options]
     else
       positional_args
     end
+  end
+
+  def self.is_named?(param)
+    param.size == 2 && param.last != :_
   end
 
   def self.method_cache_keys(future_contexts)

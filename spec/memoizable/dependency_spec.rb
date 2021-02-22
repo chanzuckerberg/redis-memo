@@ -179,11 +179,11 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'works using a dependency block with a splat' do
         obj.class_eval do
-          memoize_method :test do |_, _, *args|; end
+          memoize_method :test do |_, _, *args, _, a|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case([2, 3, {b: 1}]) { 5.times { obj.test(1, 2, 3, b: 1) } }
-          add_test_case([2, 3, 4]) { 5.times { obj.test(1, 2, 3, 4) } }
+          add_test_case([2, 3, 5]) { 5.times { obj.test(1, 2, 3, 4, 5) } }
+          add_test_case([2, 3, 5, {b: 1}]) { 5.times { obj.test(1, 2, 3, 4, 5, b: 1) } }
         end
       end
 
@@ -199,12 +199,12 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'works using a dependency block with anonomyous splats' do
         obj.class_eval do
-          memoize_method :test do |_, a, b, *, c:, **|; end
+          memoize_method :test do |_, a, b, *, c, d:, **|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case([1, 2, {c: 3}]) do
-            5.times { obj.test(1, 2, 3, c: 3) }
-            5.times { obj.test(1, 2, 3, 4, 5, 6, c: 3, d: 4) }
+          add_test_case([1, 1, 1, {d: 3}]) do
+            5.times { obj.test(1, 1, 2, 3, 1, d: 3) }
+            5.times { obj.test(1, 1, 3, 4, 5, 1, d: 3, e: 3) }
           end
         end
       end
