@@ -72,7 +72,6 @@ class RedisMemo::Options
   end
 
   attr_accessor :async
-  attr_accessor :bulk_operations_invalidation_limit
   attr_accessor :cache_out_of_date_handler
   attr_accessor :cache_validation_sampler
   attr_accessor :compress
