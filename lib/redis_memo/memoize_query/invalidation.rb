@@ -36,7 +36,6 @@ class RedisMemo::MemoizeQuery::Invalidation
       decrement_counter
       delete_all delete_by
       increment_counter
-      insert insert! insert_all insert_all!
       touch_all
       update_column update_columns update_all update_counters
       upsert upsert_all
@@ -59,6 +58,15 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
 
     %i(
+      insert insert! insert_all insert_all!
+    ).each do |method_name|
+      rewrite_insert_method(
+        model_class,
+        method_name,
+      )
+    end
+
+    %i(
       import import!
     ).each do |method_name|
       rewrite_import_method(
@@ -68,6 +76,14 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
 
     model_class.class_variable_set(var_name, true)
+  end
+
+  def self.invalidate_new_records(model_class, &blk)
+    current_id = model_class.maximum(model_class.primary_key)
+    result = blk.call
+    records = select_by_new_ids(model_class, current_id)
+    RedisMemo::MemoizeQuery.invalidate(*records) unless records.empty?
+    result
   end
 
   private
@@ -95,7 +111,23 @@ class RedisMemo::MemoizeQuery::Invalidation
     end
   end
 
+  def self.rewrite_insert_method(model_class, method_name)
+    return unless model_class.respond_to?(method_name)
+
+    model_class.singleton_class.class_eval do
+      alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
+
+      define_method method_name do |*args, &blk|
+        RedisMemo::MemoizeQuery::Invalidation.invalidate_new_records(model_class) do
+          send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
+        end
+      end
+    end
+  end
+
   def self.rewrite_import_method(model_class, method_name)
+    return unless model_class.respond_to?(method_name)
+
     # This optimization to avoid over-invalidation only works on postgres
     unless ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
       rewrite_default_method(model_class, model_class, method_name, class_method: true)
@@ -113,6 +145,14 @@ class RedisMemo::MemoizeQuery::Invalidation
         columns_to_update = options[:on_duplicate_key_update]
         if columns_to_update.is_a?(Hash)
           columns_to_update = columns_to_update[:columns]
+        end
+
+        # When the on_duplicate_key_update options is not set, we are basically
+        # inserting new records
+        unless columns_to_update
+          return RedisMemo::MemoizeQuery::Invalidation.invalidate_new_records(model_class) do
+            send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
+          end
         end
 
         if records.last.is_a?(Hash)
@@ -201,6 +241,19 @@ class RedisMemo::MemoizeQuery::Invalidation
     ) do
       RedisMemo.without_memo do
         model_class.where(model_class.primary_key => ids).to_a
+      end
+    end
+  end
+
+  def self.select_by_new_ids(model_class, target_id)
+    RedisMemo::Tracer.trace(
+      'redis_memo.memoize_query.invalidation',
+      "#{__method__}##{model_class.name}",
+    ) do
+      RedisMemo.without_memo do
+        model_class.where(
+          model_class.arel_table[model_class.primary_key].gt(target_id),
+        ).to_a
       end
     end
   end

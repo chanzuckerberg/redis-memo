@@ -233,6 +233,31 @@ describe RedisMemo::MemoizeQuery do
         expect(Site.a_count(2)).to eq(0)
       end
 
+      # Test cases for activerecord >= 6
+      if Site.respond_to?(:insert!)
+        it 'recalculates after insert' do
+          RedisMemo::Cache.with_local_cache do
+            site = Site.create!(a: 0)
+            expect_to_eq_with_or_without_redis do
+              Site.find(site.id)
+            end
+
+            records = 5.times.map { {a: 2} }
+            Site.insert_all!(records)
+            expect(Site.a_count(2)).to eq(7)
+
+            Site.insert!(records.last)
+            expect(Site.a_count(2)).to eq(8)
+
+            Site.insert!({a: 0})
+            # site(a: 0) is not affected by the imports
+            expect_not_to_use_redis do
+              5.times { Site.find(site.id) }
+            end
+          end
+        end
+      end
+
       it 'recalculates after import' do
         RedisMemo::Cache.with_local_cache do
           site = Site.create!(a: 0)
