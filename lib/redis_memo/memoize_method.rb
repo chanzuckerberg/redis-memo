@@ -153,7 +153,7 @@ module RedisMemo::MemoizeMethod
     if !kwargs.empty?
       positional_args + [kwargs]
     elsif named_splat && !options.empty?
-        positional_args + [options]
+      positional_args + [options]
     else
       positional_args
     end
