@@ -108,8 +108,8 @@ module RedisMemo::MemoizeMethod
     positional_args = []
     kwargs = {}
     named_rest = false
-    depends_on_args = [ref] + args
-    options = depends_on_args.extract_options!&.clone
+    depends_on_args = [ref] + deep_copy(args)
+    options = depends_on_args.extract_options!
 
     depends_on.parameters.each_with_index do |param, i|
       unless param.size != 2 || param.last == :_
@@ -178,5 +178,11 @@ module RedisMemo::MemoizeMethod
     end
   rescue RedisMemo::Cache::Rescuable
     nil
+  end
+
+  private
+
+  def self.deep_copy(o)
+    Marshal.load(Marshal.dump(o))
   end
 end
