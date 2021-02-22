@@ -108,7 +108,7 @@ module RedisMemo::MemoizeMethod
     positional_args = []
     kwargs = {}
     named_rest = false
-    depends_on_args = [ref] + deep_copy(args)
+    depends_on_args = [ref] + args
     options = depends_on_args.extract_options!
 
     depends_on.parameters.each_with_index do |param, i|
@@ -121,7 +121,7 @@ module RedisMemo::MemoizeMethod
           named_rest = true
           positional_args.concat(depends_on_args[i..-1])
         when :key, :keyreq
-          kwargs[param.last] = options.delete(param.last)
+          kwargs[param.last] = options[param.last]
         when :keyrest
           kwargs.merge!(options)
         else
@@ -178,11 +178,5 @@ module RedisMemo::MemoizeMethod
     end
   rescue RedisMemo::Cache::Rescuable
     nil
-  end
-
-  private
-
-  def self.deep_copy(o)
-    Marshal.load(Marshal.dump(o))
   end
 end
