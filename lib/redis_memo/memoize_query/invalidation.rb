@@ -254,6 +254,8 @@ class RedisMemo::MemoizeQuery::Invalidation
   end
 
   def self.select_by_conflict_target_relation(model_class, relation)
+    return [] unless relation
+
     RedisMemo::Tracer.trace(
       'redis_memo.memoize_query.invalidation',
       "#{__method__}##{model_class.name}",
