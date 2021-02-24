@@ -1,15 +1,17 @@
 require 'redis_memo/testing'
 
 describe RedisMemo::Testing do
-  klass = Class.new do
+  let(:klass) {
+    Class.new do
 
-    def self.test; end
+      def self.test; end
 
-    class << self
-      extend RedisMemo::MemoizeMethod
-      memoize_method :test
+      class << self
+        extend RedisMemo::MemoizeMethod
+        memoize_method :test
+      end
     end
-  end
+  }
 
   def expect_no_caching
     expect(RedisMemo::Cache).to_not receive(:read_multi)
