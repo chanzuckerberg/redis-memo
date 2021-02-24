@@ -267,9 +267,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
       bind_params
     when Arel::Nodes::SelectStatement
-      # No OREDER BY
-      return unless node.orders.empty?
-
       node.cores.each do |core|
         # We don't support JOINs
         return unless core.source.right.empty?

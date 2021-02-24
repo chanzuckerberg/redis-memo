@@ -428,9 +428,18 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  it 'does not memoize ordered queries' do
-    expect_not_to_use_redis do
-      Site.order(:a).take(5)
+  context 'for ordered queries' do 
+    it 'does not memoize unbound ordered queries' do
+      expect_not_to_use_redis do
+        Site.order(:a).take(5)
+      end
+    end
+
+    it 'memoizes bounded ordered queries' do
+      record = Site.create!(a: 1)
+      expect_to_use_redis do
+        expect(Site.where(a: 1).order(:a).to_a).to eq([record])
+      end
     end
   end
 
