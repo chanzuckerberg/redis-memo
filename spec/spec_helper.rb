@@ -25,6 +25,7 @@ RSpec.configure do |config|
   config.before(:each) do
     RedisMemo::Cache.redis.flushdb
     DatabaseCleaner.strategy = :truncation
+    RedisMemo::Memoizable::Invalidation.drain_invalidation_queue
   end
 
   config.after(:each) do
