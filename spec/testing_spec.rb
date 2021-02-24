@@ -23,7 +23,7 @@ describe RedisMemo::Testing do
     yield
   end
 
-  context 'when enabled globally' do
+  context 'when set globally' do
     RedisMemo::Testing.enable_test_mode
 
     it 'falls back to non-cached method if invalidation queue is non-empty' do
@@ -33,9 +33,17 @@ describe RedisMemo::Testing do
         klass.test
       end
     end
+
+    it 'disables test mode globally' do
+      RedisMemo::Testing.disable_test_mode
+      expect_caching do
+        RedisMemo::Memoizable::Invalidation.class_variable_get(:@@invalidation_queue) << RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil)
+        klass.test
+      end
+    end
   end
 
-  context 'when not enabled globally' do
+  context 'when not set globally' do
     RedisMemo::Memoizable::Invalidation.class_variable_get(:@@invalidation_queue) << RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil)
     
     it 'is only enabled for the given block' do
