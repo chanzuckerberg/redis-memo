@@ -383,6 +383,16 @@ describe RedisMemo::Memoizable::Invalidation do
       }.to change { record.calc_count }.by(10)
     end
 
+    it 'falls back to the uncached method when queries are disabled for caching', :disable_cached_select do
+      allow(ActiveRecord::Base.connection).to receive(:respond_to?).and_call_original
+      allow(ActiveRecord::Base.connection).to receive(:respond_to?).with(:dependency_of).and_return(false)
+      record = SpecModel.create!(a: 1)
+      record.calc_count = 0
+      expect {
+        5.times { record.calc }
+      }.to change { record.calc_count }.by(5)
+    end
+
     it 'supports conditional memoization by raising a WithoutMemoization error' do
       record = SpecModel.create!(a: 1)
       record.calc_count = 0
