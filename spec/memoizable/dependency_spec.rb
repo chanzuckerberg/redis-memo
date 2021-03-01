@@ -384,6 +384,7 @@ describe RedisMemo::Memoizable::Invalidation do
     end
 
     it 'falls back to the uncached method when queries are disabled for caching', :disable_cached_select do
+      allow(ActiveRecord::Base.connection).to receive(:respond_to?).and_call_original
       allow(ActiveRecord::Base.connection).to receive(:respond_to?).with(:dependency_of).and_return(false)
       record = SpecModel.create!(a: 1)
       record.calc_count = 0
