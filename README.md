@@ -110,7 +110,7 @@ This design allows RedisMemo to:
     *   [Reuse dependencies](https://github.com/chanzuckerberg/redis-memo/wiki/Hierarchical-Caching)
 *   [Provide auto-invalidation (with ActiveRecord)](https://github.com/chanzuckerberg/redis-memo/wiki/Auto-Invalidation-with-ActiveRecord)
 *   [Ensure consistency during deployments](https://github.com/chanzuckerberg/redis-memo/wiki/Ensure-consistency-during-deployments)
-*   [Ensure consistency with multi-version concurrency control  (with ActiveRecord)](https://github.com/chanzuckerberg/redis-memo/wiki/Multi-Version-Concurrency-Control-(MVCC))
+*   [Ensure consistency with multi-version concurrency control  (with ActiveRecord)](https://github.com/chanzuckerberg/redis-memo/wiki/Multi-Version-Concurrency-Control)
 
 
 ## Learn More
