@@ -9,7 +9,9 @@ class RedisMemo::Middleware
     result = nil
 
     RedisMemo::Cache.with_local_cache do
-      result = @app.call(env)
+      RedisMemo.with_max_connection_attempts(ENV['REDIS_MEMO_MAX_ATTEMPTS_PER_REQUEST']&.to_i) do
+        result = @app.call(env)
+      end
     end
     RedisMemo::Memoizable::Invalidation.drain_invalidation_queue
 

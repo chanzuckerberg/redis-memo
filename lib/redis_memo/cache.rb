@@ -20,6 +20,9 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     if Thread.current[THREAD_KEY_RAISE_ERROR]
       raise RedisMemo::Cache::Rescuable
     else
+      if exception.is_a?(Redis::BaseConnectionError)
+        RedisMemo.incr_max_connection_attempts
+      end
       returning
     end
   end
