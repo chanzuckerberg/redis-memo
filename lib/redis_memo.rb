@@ -110,7 +110,8 @@ module RedisMemo
   end
 
   # Fall back to RedisMemo.without_memo if the maximum connection attempts has been reached for a single request
-  def self.incr_max_connection_attempts
+  private
+  def self.incr_connection_attempts # :nodoc:
     return if Thread.current[THREAD_KEY_MAX_CONNECTION_ATTEMPTS].nil? || Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT].nil?
 
     Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT] += 1
