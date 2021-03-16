@@ -3,9 +3,23 @@
 describe RedisMemo::Cache do
   let!(:redis) { RedisMemo::Cache.redis }
   let!(:cache) { RedisMemo::Cache }
+  let!(:error_handler) { proc {} }
 
   before(:each) do
     allow(RedisMemo::DefaultOptions).to receive(:logger) { nil }
+    allow(RedisMemo::DefaultOptions).to receive(:redis_error_handler) { error_handler }
+  end
+
+  def raise_redis_errors
+    allow_any_instance_of(Redis).to receive(:mget) do
+      raise ::Redis::BaseConnectionError
+    end
+    allow_any_instance_of(Redis).to receive(:mapped_mget) do
+      raise ::Redis::BaseConnectionError
+    end
+    allow_any_instance_of(Redis).to receive(:set) do
+      raise ::Redis::BaseConnectionError
+    end
   end
 
   it 'checks the request store before making redis call before get' do
@@ -44,18 +58,7 @@ describe RedisMemo::Cache do
   end
 
   it 'does not interrupt on redis errors' do
-    error_handler = proc {}
-    allow(RedisMemo::DefaultOptions).to receive(:redis_error_handler) { error_handler }
-
-    allow_any_instance_of(Redis).to receive(:mget) do
-      raise ::Redis::BaseConnectionError
-    end
-    allow_any_instance_of(Redis).to receive(:mapped_mget) do
-      raise ::Redis::BaseConnectionError
-    end
-    allow_any_instance_of(Redis).to receive(:set) do
-      raise ::Redis::BaseConnectionError
-    end
+    raise_redis_errors
 
     klass = Class.new do
       extend RedisMemo::MemoizeMethod
@@ -87,15 +90,7 @@ describe RedisMemo::Cache do
         end
       end
     end
-    allow_any_instance_of(Redis).to receive(:mget) do
-      raise ::Redis::BaseConnectionError
-    end
-    allow_any_instance_of(Redis).to receive(:mapped_mget) do
-      raise ::Redis::BaseConnectionError
-    end
-    allow_any_instance_of(Redis).to receive(:set) do
-      raise ::Redis::BaseConnectionError
-    end
+    raise_redis_errors
 
     store = RedisMemo::Cache
     expect(store.read_multi('a', 'b')).to eq({})
@@ -115,5 +110,30 @@ describe RedisMemo::Cache do
     expect {
       store.write('a', 'b', raise_error: true, disable_async: true)
     }.to raise_error(RedisMemo::Cache::Rescuable)
+  end
+
+  it 'falls back to no caching if max connection attempts are configured' do
+    raise_redis_errors
+
+    klass = Class.new do
+      extend RedisMemo::MemoizeMethod
+
+      attr_accessor :count
+
+      def exec
+        @count += 1
+      end
+
+      memoize_method :exec
+    end
+    obj = klass.new
+    obj.count = 0
+
+    # Errors are raised on both the cache read and cache write (from the cache miss)
+    expect(error_handler).to receive(:call).twice
+    expect(redis).to receive(:mget).once.and_call_original
+
+    RedisMemo.with_max_connection_attempts(1) { 5.times { obj.exec } }
+    expect(obj.count).to be 5
   end
 end

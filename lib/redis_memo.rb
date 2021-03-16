@@ -19,6 +19,8 @@ module RedisMemo
 
   # @todo Move thread keys to +RedisMemo::ThreadKey+
   THREAD_KEY_WITHOUT_MEMO = :__redis_memo_without_memo__
+  THREAD_KEY_CONNECTION_ATTEMPTS_COUNT = :__redis_memo_connection_attempts_count__
+  THREAD_KEY_MAX_CONNECTION_ATTEMPTS = :__redis_memo_max_connection_attempts__
 
   # Configure global-level default options. Those options will be used unless
   # some options specified at +memoize_method+ callsite level. See
@@ -92,6 +94,35 @@ module RedisMemo
     yield
   ensure
     Thread.current[THREAD_KEY_WITHOUT_MEMO] = prev_value
+  end
+
+  # Set the max connection attempts to Redis per code block. If we fail to connect to Redis more than `max_attempts`
+  # times, the rest of the code block will fall back to the uncached flow, `RedisMemo.without_memo`.
+  #
+  # @param [Integer] The max number of connection attempts.
+  # @yield [] no_args the block of code to set the max attempts for.
+  def self.with_max_connection_attempts(max_attempts)
+    prev_value = Thread.current[THREAD_KEY_WITHOUT_MEMO]
+    if max_attempts
+      Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT] = 0
+      Thread.current[THREAD_KEY_MAX_CONNECTION_ATTEMPTS] = max_attempts
+    end
+    yield
+  ensure
+    Thread.current[THREAD_KEY_WITHOUT_MEMO] = prev_value
+    Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT] = nil
+    Thread.current[THREAD_KEY_MAX_CONNECTION_ATTEMPTS] = nil
+  end
+
+  private
+  def self.incr_connection_attempts # :nodoc:
+    return if Thread.current[THREAD_KEY_MAX_CONNECTION_ATTEMPTS].nil? || Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT].nil?
+
+    # The connection attempts count and max connection attempts are reset in RedisMemo.with_max_connection_attempts
+    Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT] += 1
+    if Thread.current[THREAD_KEY_CONNECTION_ATTEMPTS_COUNT] >= Thread.current[THREAD_KEY_MAX_CONNECTION_ATTEMPTS]
+      Thread.current[THREAD_KEY_WITHOUT_MEMO] = true
+    end
   end
 
   # @todo Move errors to a separate file errors.rb
