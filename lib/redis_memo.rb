@@ -80,7 +80,7 @@ module RedisMemo
   #
   # @return [Boolean]
   def self.without_memo?
-    Thread.current[THREAD_KEY_WITHOUT_MEMO] == true
+    ENV["REDIS_MEMO_DISABLE_ALL"] == 'true' || Thread.current[THREAD_KEY_WITHOUT_MEMO] == true
   end
 
   # Configure the wrapped code in the block to skip memoization.
