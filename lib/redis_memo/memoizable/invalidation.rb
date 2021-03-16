@@ -127,7 +127,10 @@ module RedisMemo::Memoizable::Invalidation
       begin
         bump_version(task)
       rescue SignalException, Redis::BaseConnectionError,
-             ::ConnectionPool::TimeoutError
+        ::ConnectionPool::TimeoutError => e
+
+        RedisMemo::DefaultOptions.redis_error_handler&.call(e, __method__)
+        RedisMemo::DefaultOptions.logger&.warn(e.full_message)
         retry_queue << task
       end
     end
