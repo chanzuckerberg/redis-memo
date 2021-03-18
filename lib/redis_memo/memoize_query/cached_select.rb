@@ -324,7 +324,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
         return unless bind_params
       end
-
+      
       bind_params
     when Arel::Nodes::Union, Arel::Nodes::Or
       [node.left, node.right].each do |child|
@@ -336,6 +336,9 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
 
       bind_params
+    
+    when Arel::Nodes::NotEqual
+      return bind_params
     else
       # Not yet supported
       return
