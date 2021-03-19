@@ -445,12 +445,22 @@ describe RedisMemo::MemoizeQuery do
 
   context 'when the queries have NOT' do 
     let!(:record) { Site.create!(a: 1, b: 1) }
-    let!(:relation_with_only_not) { Site.where.not(a: 2) }
+    let!(:relation1_with_only_not) { Site.where.not(a: 2) }
+    let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 1) }
+    let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
     let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
 
     it 'does not memoize queries with only NOT' do
       expect_not_to_use_redis do
-        expect(relation_with_only_not.to_a).to eq([record])
+        expect(relation1_with_only_not.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation2_with_only_not.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation3_with_only_not.to_a).to eq([])
       end
     end
 
