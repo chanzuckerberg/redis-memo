@@ -313,9 +313,10 @@ class RedisMemo::MemoizeQuery::CachedSelect
       bind_params
     when Arel::Nodes::Grouping
       # Inline SQL
-      return if node.expr.is_a?(Arel::Nodes::SqlLiteral)
-
+      return bind_params if is_comparison_expr(node.expr)
       extract_bind_params_recurse(node.expr)
+    when NodeHasComparators
+      return bind_params 
     when Arel::Nodes::And
       node.children.each do |child|
         bind_params = bind_params.product(
@@ -347,6 +348,13 @@ class RedisMemo::MemoizeQuery::CachedSelect
     end
   end
 
+  # Whether the expression of the node has the compare operators
+  def self.is_comparison_expr(expr)
+    return false if !expr.is_a?(Arel::Nodes::SqlLiteral)
+    compare_operators = ['>', '>=', '<', '<=', '!=']
+    compare_operators.any?{ |comparator| expr.to_s.include?(comparator) }
+  end
+
   def self.extract_binding_relation(table_node)
     enabled_models[table_node.try(:name)]
   end
@@ -364,6 +372,18 @@ class RedisMemo::MemoizeQuery::CachedSelect
         else
           false
         end
+      end
+    end
+  end
+
+  class NodeHasComparators
+    def self.===(node)
+      case node
+      # TODO(Christina): remove the single Arel::Nodes::NotEqual block in line 141 after the NodeHasComparators changes are merged
+      when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
+        true
+      else
+        false
       end
     end
   end
