@@ -336,6 +336,11 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
 
       bind_params
+
+    when Arel::Nodes::NotEqual
+      # We don't cache based on NOT queries (where.not) because it is unbound
+      # but we memoize queries with NOT and other bound queries, so we return the original bind_params
+      return bind_params
     else
       # Not yet supported
       return

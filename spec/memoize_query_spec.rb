@@ -443,11 +443,63 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  it 'does not memoize queries with NOT' do
-    expect_not_to_use_redis do
-      Site.where(id: Site.where.not(a: 1)).to_a
+  context 'when the queries have NOT' do 
+    let!(:record) { Site.create!(a: 1, b: 1) }
+    let!(:relation1_with_only_not) { Site.where.not(a: 2) }
+    let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 1) }
+    let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
+    let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
+
+    it 'does not memoize queries with only NOT' do
+      expect_not_to_use_redis do
+        expect(relation1_with_only_not.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation2_with_only_not.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation3_with_only_not.to_a).to eq([])
+      end
     end
-  end
+
+    it 'memoizes queries with both NOT and other bound conditions' do
+      expect_to_use_redis do
+        expect(relation_with_not_and_other.to_a).to eq([record])
+      end
+    end
+
+    it 'it updates the affected query result' do
+      record.update(a: 2)
+
+      expect_to_use_redis do
+        expect(relation_with_not_and_other.reload.to_a).to eq([])
+      end
+    end
+
+    it 'only invalidates the affected query result sets' do
+      RedisMemo::Cache.with_local_cache do 
+        # WHERE a != 2 and b = 1
+        expect_to_use_redis do
+          expect(relation_with_not_and_other.to_a).to eq([record])
+        end
+        
+        Site.create!(b: 2)
+
+        # The new created record does not affect WHERE a != 2 and b = 1
+        expect_not_to_use_redis do
+          expect(relation_with_not_and_other.reload.to_a).to eq([record])
+        end
+
+        # when an affected update happens, it updates the affected results
+        record.update!(a: 2)
+        expect_to_use_redis do
+          expect(relation_with_not_and_other.reload.to_a).to eq([])
+        end
+      end
+    end
+  end  
 
   it 'does not memoize queries with non-memoized columns' do
     expect_not_to_use_redis do
