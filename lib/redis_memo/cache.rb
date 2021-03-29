@@ -57,6 +57,14 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE]
   end
 
+  def failsafe(method, returning: nil)
+    yield
+  rescue ::Redis::BaseError, ::ConnectionPool::TimeoutError => e
+    handle_exception exception: e, method: method, returning: returning
+    returning
+  end
+  private :failsafe
+
   class << self
     def with_local_cache(&blk)
       Thread.current[THREAD_KEY_LOCAL_CACHE] = {}

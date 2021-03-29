@@ -10,15 +10,15 @@ describe RedisMemo::Cache do
     allow(RedisMemo::DefaultOptions).to receive(:redis_error_handler) { error_handler }
   end
 
-  def raise_redis_errors
+  def raise_error_on_redis_calls(error)
     allow_any_instance_of(Redis).to receive(:mget) do
-      raise ::Redis::BaseConnectionError
+      raise error
     end
     allow_any_instance_of(Redis).to receive(:mapped_mget) do
-      raise ::Redis::BaseConnectionError
+      raise error
     end
     allow_any_instance_of(Redis).to receive(:set) do
-      raise ::Redis::BaseConnectionError
+      raise error
     end
   end
 
@@ -58,7 +58,31 @@ describe RedisMemo::Cache do
   end
 
   it 'does not interrupt on redis errors' do
-    raise_redis_errors
+    raise_error_on_redis_calls(::Redis::BaseConnectionError)
+
+    klass = Class.new do
+      extend RedisMemo::MemoizeMethod
+
+      attr_accessor :count
+
+      def exec
+        @count += 1
+      end
+
+      memoize_method :exec
+    end
+
+    expect(error_handler).to receive(:call).at_least(5).times
+
+    obj = klass.new
+    obj.count = 0
+    5.times { obj.exec }
+    expect(obj.count).to be 5
+  end
+
+
+  it 'does not interrupt on connection pool errors' do
+    raise_error_on_redis_calls(::ConnectionPool::TimeoutError)
 
     klass = Class.new do
       extend RedisMemo::MemoizeMethod
@@ -90,7 +114,7 @@ describe RedisMemo::Cache do
         end
       end
     end
-    raise_redis_errors
+    raise_error_on_redis_calls(::Redis::BaseConnectionError)
 
     store = RedisMemo::Cache
     expect(store.read_multi('a', 'b')).to eq({})
@@ -113,7 +137,7 @@ describe RedisMemo::Cache do
   end
 
   it 'falls back to no caching if max connection attempts are configured' do
-    raise_redis_errors
+    raise_error_on_redis_calls(::Redis::BaseConnectionError)
 
     klass = Class.new do
       extend RedisMemo::MemoizeMethod
