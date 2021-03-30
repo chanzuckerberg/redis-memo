@@ -57,6 +57,16 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE]
   end
 
+  # See https://github.com/rails/rails/blob/fe76a95b0d252a2d7c25e69498b720c96b243ea2/activesupport/lib/active_support/cache/redis_cache_store.rb#L477
+  # We overwrite this private method so we can also rescue ConnectionPool::TimeoutErrors
+  def failsafe(method, returning: nil)
+    yield
+  rescue ::Redis::BaseError, ::ConnectionPool::TimeoutError => e
+    handle_exception exception: e, method: method, returning: returning
+    returning
+  end
+  private :failsafe
+
   class << self
     def with_local_cache(&blk)
       Thread.current[THREAD_KEY_LOCAL_CACHE] = {}
