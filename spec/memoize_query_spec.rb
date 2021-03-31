@@ -449,7 +449,8 @@ describe RedisMemo::MemoizeQuery do
     let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 2) }
     let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
     let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
-    # where.not(a: ..., b:...) relation is treated differently in Rails 6.0, Rails 6.1 and before Rails 6
+    # where.not(a: ..., b:...) relation is treated differently in different Rails versions, 
+    # so we test its different behaviors in different versions next
     # Details: https://bigbinary.com/blog/rails-6-deprecates-where-not-working-as-nor-and-will-change-to-nand-in-rails-6-1
     let!(:special_relation_with_not) { Site.where.not(a: 2, b: 1) }
 
@@ -469,7 +470,8 @@ describe RedisMemo::MemoizeQuery do
     end
 
     it 'does not memoize but adapts to different Rails versions flexibly' do
-      if Rails.version >= '6.1'
+      # We use ActiveRecord version to check Rails version
+      if ActiveRecord.version.to_s >= '6.1'
         # Site.where.not(a: 2).where(b: 1) will be treated as NAND in Rails 6.1
         expect(special_relation_with_not.to_a).to eq([record])
       else
