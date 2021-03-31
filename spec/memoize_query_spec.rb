@@ -446,9 +446,14 @@ describe RedisMemo::MemoizeQuery do
   context 'when the queries have NOT' do 
     let!(:record) { Site.create!(a: 1, b: 1) }
     let!(:relation1_with_only_not) { Site.where.not(a: 2) }
-    let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 1) }
+    let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 2) }
     let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
     let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
+    # where.not(a: ..., b:...) relation is treated differently in different Rails versions, 
+    # so we test its different behaviors in different versions next
+    # Details: https://bigbinary.com/blog/rails-6-deprecates-where-not-working-as-nor-and-will-change-to-nand-in-rails-6-1
+    let!(:special_relation_with_not) { Site.where.not(a: 2, b: 1) }
+
 
     it 'does not memoize queries with only NOT' do
       expect_not_to_use_redis do
@@ -461,6 +466,18 @@ describe RedisMemo::MemoizeQuery do
 
       expect_not_to_use_redis do
         expect(relation3_with_only_not.to_a).to eq([])
+      end
+    end
+
+    it 'does not memoize but adapts to different Rails versions flexibly' do
+      # We use ActiveRecord version to check Rails version
+      if ActiveRecord.version.to_s >= '6.1'
+        # Site.where.not(a: 2).where(b: 1) will be treated as NAND in Rails 6.1
+        expect(special_relation_with_not.to_a).to eq([record])
+      else
+        # Site.where.not(a: 2).where(b: 1) will be treated as NOR in and before Rails 6.0
+        # but will give a deprecation warning in Rails 6.0
+        expect(special_relation_with_not.to_a).to eq([])
       end
     end
 
