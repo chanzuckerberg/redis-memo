@@ -443,81 +443,6 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  context 'when the queries have NOT' do 
-    let!(:record) { Site.create!(a: 1, b: 1) }
-    let!(:relation1_with_only_not) { Site.where.not(a: 2) }
-    let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 2) }
-    let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
-    let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
-    # where.not(a: ..., b:...) relation is treated differently in different Rails versions, 
-    # so we test its different behaviors in different versions next
-    # Details: https://bigbinary.com/blog/rails-6-deprecates-where-not-working-as-nor-and-will-change-to-nand-in-rails-6-1
-    let!(:special_relation_with_not) { Site.where.not(a: 2, b: 1) }
-
-
-    it 'does not memoize queries with only NOT' do
-      expect_not_to_use_redis do
-        expect(relation1_with_only_not.to_a).to eq([record])
-      end
-
-      expect_not_to_use_redis do
-        expect(relation2_with_only_not.to_a).to eq([record])
-      end
-
-      expect_not_to_use_redis do
-        expect(relation3_with_only_not.to_a).to eq([])
-      end
-    end
-
-    it 'does not memoize but adapts to different Rails versions flexibly' do
-      # We use ActiveRecord version to check Rails version
-      if ActiveRecord.version.to_s >= '6.1'
-        # Site.where.not(a: 2).where(b: 1) will be treated as NAND in Rails 6.1
-        expect(special_relation_with_not.to_a).to eq([record])
-      else
-        # Site.where.not(a: 2).where(b: 1) will be treated as NOR in and before Rails 6.0
-        # but will give a deprecation warning in Rails 6.0
-        expect(special_relation_with_not.to_a).to eq([])
-      end
-    end
-
-    it 'memoizes queries with both NOT and other bound conditions' do
-      expect_to_use_redis do
-        expect(relation_with_not_and_other.to_a).to eq([record])
-      end
-    end
-
-    it 'it updates the affected query result' do
-      record.update(a: 2)
-
-      expect_to_use_redis do
-        expect(relation_with_not_and_other.reload.to_a).to eq([])
-      end
-    end
-
-    it 'only invalidates the affected query result sets' do
-      RedisMemo::Cache.with_local_cache do 
-        # WHERE a != 2 and b = 1
-        expect_to_use_redis do
-          expect(relation_with_not_and_other.to_a).to eq([record])
-        end
-        
-        Site.create!(b: 2)
-
-        # The new created record does not affect WHERE a != 2 and b = 1
-        expect_not_to_use_redis do
-          expect(relation_with_not_and_other.reload.to_a).to eq([record])
-        end
-
-        # when an affected update happens, it updates the affected results
-        record.update!(a: 2)
-        expect_to_use_redis do
-          expect(relation_with_not_and_other.reload.to_a).to eq([])
-        end
-      end
-    end
-  end  
-
   it 'does not memoize queries with non-memoized columns' do
     expect_not_to_use_redis do
       Site.where(a: 1, b: 1, not_memoized: 1).to_a
@@ -616,32 +541,42 @@ describe RedisMemo::MemoizeQuery do
   context 'when the queries have compare operators (unbound)' do
     RSpec.shared_examples 'does not memoize queries with only compare operators' do
       it 'does not memoize queries with only compare operators' do 
-        # The relation1_with_only_comparator, relation2_with_only_comparator and relation3_with_only_comparator are all relations with 
+        # The relation1_with_only_comparator, relation2_with_only_comparator and relation3_with_only_comparator, if defined in each test, are all relations with 
         # only compare operators which will not be cached, e.g. SELECT * FROM SITE WHERE a > 1
-        expect_not_to_use_redis do
-          expect(relation1_with_only_comparator.to_a).to eq(result)
+        if defined?(relation1_with_only_comparator)
+          expect_not_to_use_redis do
+            expect(relation1_with_only_comparator.to_a).to eq(result)
+          end
         end
-  
-        expect_not_to_use_redis do
-          expect(relation2_with_only_comparator.to_a).to eq(result)
+        
+        if defined?(relation2_with_only_comparator)
+          expect_not_to_use_redis do
+            expect(relation2_with_only_comparator.to_a).to eq(result)
+          end
         end
 
-        expect_not_to_use_redis do
-          expect(relation3_with_only_comparator.to_a).to eq(result)
+        if defined?(relation3_with_only_comparator)
+          expect_not_to_use_redis do
+            expect(relation3_with_only_comparator.to_a).to eq(result)
+          end
         end
       end
     end
 
-    # The relation1_with_comparator_and_other and relation2_with_comparator_and_other both have unbound and bound conditions,
+    # The relation1_with_comparator_and_other and relation2_with_comparator_and_other, if defined in each test, both have unbound and bound conditions,
     # so they can be cached partially, e.g. SELECT * FROM SITE WHERE a > 1 and b = 2
     RSpec.shared_examples 'memoizes queries with both comparator and other bound conditions' do
       it 'memoizes queries with both comparator and other bound conditions' do
-        expect_to_use_redis do
-          expect(relation1_with_comparator_and_other.to_a).to eq(result)
+        if defined?(relation1_with_comparator_and_other)
+          expect_to_use_redis do
+            expect(relation1_with_comparator_and_other.to_a).to eq(result)
+          end
         end
   
-        expect_to_use_redis do
-          expect(relation2_with_comparator_and_other.to_a).to eq(result)
+        if defined?(relation2_with_comparator_and_other)
+          expect_to_use_redis do
+            expect(relation2_with_comparator_and_other.to_a).to eq(result)
+          end
         end
       end
     end
@@ -649,12 +584,16 @@ describe RedisMemo::MemoizeQuery do
     RSpec.shared_examples 'when update happens to the records' do
       it 'it updates the affected query result' do
         update
-        expect_to_use_redis do
-          expect(relation1_with_comparator_and_other.reload.to_a).to eq(result)
+        if defined?(relation1_with_comparator_and_other)
+          expect_to_use_redis do
+            expect(relation1_with_comparator_and_other.reload.to_a).to eq(result)
+          end
         end
   
-        expect_to_use_redis do
-          expect(relation2_with_comparator_and_other.reload.to_a).to eq(result)
+        if defined?(relation2_with_comparator_and_other)
+          expect_to_use_redis do
+            expect(relation2_with_comparator_and_other.reload.to_a).to eq(result)
+          end
         end
       end
     end
@@ -662,34 +601,46 @@ describe RedisMemo::MemoizeQuery do
     RSpec.shared_examples 'with local cache' do
       it 'only invalidates the affected query result sets' do
         RedisMemo::Cache.with_local_cache do 
-          expect_to_use_redis do
-            expect(relation1_with_comparator_and_other.to_a).to eq(unaffected_result)
+          if defined?(relation1_with_comparator_and_other)
+            expect_to_use_redis do
+              expect(relation1_with_comparator_and_other.to_a).to eq(unaffected_result)
+            end
           end
   
-          expect_to_use_redis do
-            expect(relation2_with_comparator_and_other.to_a).to eq(unaffected_result)
+          if defined?(relation2_with_comparator_and_other)
+            expect_to_use_redis do
+              expect(relation2_with_comparator_and_other.to_a).to eq(unaffected_result)
+            end
           end
   
           unaffected_creation
   
           # Does not affect with the creation because it is not dependent
-          expect_not_to_use_redis do
-            expect(relation1_with_comparator_and_other.reload.to_a).to eq(unaffected_result)
+          if defined?(relation1_with_comparator_and_other)
+            expect_not_to_use_redis do
+              expect(relation1_with_comparator_and_other.to_a).to eq(unaffected_result)
+            end
           end
   
-          expect_not_to_use_redis do
-            expect(relation2_with_comparator_and_other.reload.to_a).to eq(unaffected_result)
+          if defined?(relation2_with_comparator_and_other)
+            expect_not_to_use_redis do
+              expect(relation2_with_comparator_and_other.to_a).to eq(unaffected_result)
+            end
           end
   
           update
   
           # Will affect with the update
-          expect_to_use_redis do
-            expect(relation1_with_comparator_and_other.reload.to_a).to eq(affected_result)
+          if defined?(relation1_with_comparator_and_other)
+            expect_to_use_redis do
+              expect(relation1_with_comparator_and_other.reload.to_a).to eq(affected_result)
+            end
           end
   
-          expect_to_use_redis do
-            expect(relation2_with_comparator_and_other.reload.to_a).to eq(affected_result)
+          if defined?(relation2_with_comparator_and_other)
+            expect_to_use_redis do
+              expect(relation2_with_comparator_and_other.reload.to_a).to eq(affected_result)
+            end
           end
         end
       end
@@ -839,4 +790,111 @@ describe RedisMemo::MemoizeQuery do
       let!(:affected_result) { [] }
     end
   end
+
+  context 'when the queries have not equal (!=) operators (unbound)' do
+    let!(:record) { Site.create!(a: 1, b: 2) }
+
+    let!(:relation1_with_only_comparator) { Site.where('a != ?', 2) }
+    let!(:relation2_with_only_comparator) { Site.where('a != ? AND b = ?', 2, 2) }
+
+    let!(:relation1_with_comparator_and_other) { Site.where('a != ?', 2).where(b: 2) }
+
+    # Deliberately use let below to let it be lazy-evaluated
+    # An update which will affect the results of the relation_with_comparator_and_other above
+    let(:update) { record.update(a: 2) }
+    # A creation which will not affect the results of the relation_with_comparator_and_other above
+    let(:unaffected_creation) { Site.create(b: 1) }
+
+    it_behaves_like 'does not memoize queries with only compare operators' do 
+      let!(:result) { [record] }
+    end
+
+    it_behaves_like 'memoizes queries with both comparator and other bound conditions' do 
+      let!(:result) { [record] }
+    end
+
+    it_behaves_like 'when update happens to the records' do 
+      let!(:result) { [] }
+    end
+
+    it_behaves_like 'with local cache' do 
+      let!(:unaffected_result) { [record] }
+      let!(:affected_result) { [] }
+    end
+  end
+
+  context 'when the queries have NOT' do 
+    let!(:record) { Site.create!(a: 1, b: 1) }
+    let!(:relation1_with_only_not) { Site.where.not(a: 2) }
+    let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 2) }
+    let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
+    let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
+    # where.not(a: ..., b:...) relation is treated differently in different Rails versions, 
+    # so we test its different behaviors in different versions next
+    # Details: https://bigbinary.com/blog/rails-6-deprecates-where-not-working-as-nor-and-will-change-to-nand-in-rails-6-1
+    let!(:special_relation_with_not) { Site.where.not(a: 2, b: 1) }
+
+
+    it 'does not memoize queries with only NOT' do
+      expect_not_to_use_redis do
+        expect(relation1_with_only_not.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation2_with_only_not.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation3_with_only_not.to_a).to eq([])
+      end
+    end
+
+    it 'does not memoize but adapts to different Rails versions flexibly' do
+      # We use ActiveRecord version to check Rails version
+      if ActiveRecord.version.to_s >= '6.1'
+        # Site.where.not(a: 2).where(b: 1) will be treated as NAND in Rails 6.1
+        expect(special_relation_with_not.to_a).to eq([record])
+      else
+        # Site.where.not(a: 2).where(b: 1) will be treated as NOR in and before Rails 6.0
+        # but will give a deprecation warning in Rails 6.0
+        expect(special_relation_with_not.to_a).to eq([])
+      end
+    end
+
+    it 'memoizes queries with both NOT and other bound conditions' do
+      expect_to_use_redis do
+        expect(relation_with_not_and_other.to_a).to eq([record])
+      end
+    end
+
+    it 'it updates the affected query result' do
+      record.update(a: 2)
+
+      expect_to_use_redis do
+        expect(relation_with_not_and_other.reload.to_a).to eq([])
+      end
+    end
+
+    it 'only invalidates the affected query result sets' do
+      RedisMemo::Cache.with_local_cache do 
+        # WHERE a != 2 and b = 1
+        expect_to_use_redis do
+          expect(relation_with_not_and_other.to_a).to eq([record])
+        end
+        
+        Site.create!(b: 2)
+
+        # The new created record does not affect WHERE a != 2 and b = 1
+        expect_not_to_use_redis do
+          expect(relation_with_not_and_other.reload.to_a).to eq([record])
+        end
+
+        # when an affected update happens, it updates the affected results
+        record.update!(a: 2)
+        expect_to_use_redis do
+          expect(relation_with_not_and_other.reload.to_a).to eq([])
+        end
+      end
+    end
+  end  
 end

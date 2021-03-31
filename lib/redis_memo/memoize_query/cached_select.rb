@@ -337,11 +337,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
 
       bind_params
-
-    when Arel::Nodes::NotEqual
-      # We don't cache based on NOT queries (where.not) because it is unbound
-      # but we memoize queries with NOT and other bound queries, so we return the original bind_params
-      return bind_params
     else
       # Not yet supported
       return
@@ -379,7 +374,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
   class NodeHasComparators
     def self.===(node)
       case node
-      # TODO(Christina): remove the single Arel::Nodes::NotEqual block in line 141 after the NodeHasComparators changes are merged
       when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
         true
       else
