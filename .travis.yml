@@ -19,7 +19,9 @@ gemfile:
 
 matrix:
   allow_failures:
-  - rvm: ruby-head
+  - rvm:
+    - 3.0
+    - ruby-head
 
 script:
 - bundle exec rake db:postgresql:reset test:postgresql
