@@ -20,8 +20,8 @@ class RedisMemo::MemoizeQuery::Invalidation
       %i(delete decrement! increment!).each do |method_name|
         alias_method :"without_redis_memo_invalidation_#{method_name}", method_name
 
-        define_method method_name do |*args, **kwargs|
-          result = send(:"without_redis_memo_invalidation_#{method_name}", *args, **kwargs)
+        define_method method_name do |*args|
+          result = send(:"without_redis_memo_invalidation_#{method_name}", *args)
 
           RedisMemo::MemoizeQuery.invalidate(self)
 
@@ -133,8 +133,8 @@ class RedisMemo::MemoizeQuery::Invalidation
     klass.class_eval do
       alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
 
-      define_method method_name do |*args, **kwargs|
-        result = send(:"#{method_name}_without_redis_memo_invalidation", *args, **kwargs)
+      define_method method_name do |*args|
+        result = send(:"#{method_name}_without_redis_memo_invalidation", *args)
         RedisMemo::MemoizeQuery.invalidate_all(model_class)
         result
       end
@@ -147,9 +147,9 @@ class RedisMemo::MemoizeQuery::Invalidation
     model_class.singleton_class.class_eval do
       alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
 
-      define_method method_name do |*args, **kwargs, &blk|
+      define_method method_name do |*args, &blk|
         RedisMemo::MemoizeQuery::Invalidation.invalidate_new_records(model_class) do
-          send(:"#{method_name}_without_redis_memo_invalidation", *args, **kwargs, &blk)
+          send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
       end
     end
@@ -189,15 +189,8 @@ class RedisMemo::MemoizeQuery::Invalidation
 
       # For the args format, see
       # https://github.com/zdennis/activerecord-import/blob/master/lib/activerecord-import/import.rb#L128
-      define_method method_name do |*args, **kwargs, &blk|
-        options =
-          if kwargs.empty?
-            # Support Ruby < 3.0
-            args.last.is_a?(Hash) ? args.last : {}
-          else
-            kwargs
-          end
-
+      define_method method_name do |*args, &blk|
+        options = args.last.is_a?(Hash) ? args.last : {}
         records = args[args.last.is_a?(Hash) ? -2 : -1]
         on_duplicate_key_update = options[:on_duplicate_key_update]
         conflict_target =
@@ -223,7 +216,7 @@ class RedisMemo::MemoizeQuery::Invalidation
           records: records,
           conflict_target: conflict_target,
         ) do
-          send(:"#{method_name}_without_redis_memo_invalidation", *args, **kwargs, &blk)
+          send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
       end
     end

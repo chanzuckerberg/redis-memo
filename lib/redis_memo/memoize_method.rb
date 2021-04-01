@@ -12,12 +12,12 @@ module RedisMemo::MemoizeMethod
 
     alias_method method_name_without_memo, method_name
 
-    define_method method_name_with_memo do |*args, **kwargs|
-      return send(method_name_without_memo, *args, **kwargs) if RedisMemo.without_memo?
+    define_method method_name_with_memo do |*args|
+      return send(method_name_without_memo, *args) if RedisMemo.without_memo?
 
       dependent_memos = nil
       if depends_on
-        dependency = RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *args, **kwargs, &depends_on)
+        dependency = RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *args, &depends_on)
         dependent_memos = dependency.memos
       end
 
@@ -29,10 +29,9 @@ module RedisMemo::MemoizeMethod
         when String, Symbol
           method_id
         else
-          method_id.call(self, *args, **kwargs)
+          method_id.call(self, *args)
         end,
         args,
-        kwargs,
         dependent_memos,
         options,
         method_name_without_memo,
@@ -45,7 +44,7 @@ module RedisMemo::MemoizeMethod
 
       future.execute
     rescue RedisMemo::WithoutMemoization
-      send(method_name_without_memo, *args, **kwargs)
+      send(method_name_without_memo, *args)
     end
 
     alias_method method_name, method_name_with_memo
@@ -53,7 +52,7 @@ module RedisMemo::MemoizeMethod
     @__redis_memo_method_dependencies ||= Hash.new
     @__redis_memo_method_dependencies[method_name] = depends_on
 
-    define_method :dependency_of do |method_name, *method_args, **method_kwargs|
+    define_method :dependency_of do |method_name, *method_args|
       method_depends_on = self.class.instance_variable_get(:@__redis_memo_method_dependencies)[method_name]
       unless method_depends_on
         raise(
@@ -61,7 +60,7 @@ module RedisMemo::MemoizeMethod
           "#{method_name} is not a memoized method"
         )
       end
-      RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *method_args, **method_kwargs, &method_depends_on)
+      RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *method_args, &method_depends_on)
     end
   end
 
@@ -72,23 +71,22 @@ module RedisMemo::MemoizeMethod
     "#{class_name}#{is_class_method ? '::' : '#'}#{method_name}"
   end
 
-  def self.extract_dependencies(ref, *method_args, **method_kwargs, &depends_on)
+  def self.extract_dependencies(ref, *method_args, &depends_on)
     dependency = RedisMemo::Memoizable::Dependency.new
 
     # Resolve the dependency recursively
-    dependency.instance_exec(ref, *method_args, **method_kwargs, &depends_on)
+    dependency.instance_exec(ref, *method_args, &depends_on)
     dependency
   end
 
-  def self.get_or_extract_dependencies(ref, *method_args, **method_kwargs, &depends_on)
+  def self.get_or_extract_dependencies(ref, *method_args, &depends_on)
     if RedisMemo::Cache.local_dependency_cache
       RedisMemo::Cache.local_dependency_cache[ref.class] ||= {}
       RedisMemo::Cache.local_dependency_cache[ref.class][depends_on] ||= {}
-      named_args = exclude_anonymous_args(depends_on, ref, method_args + [method_kwargs])
-      RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][named_args] ||=
-        extract_dependencies(ref, *method_args, **method_kwargs, &depends_on)
+      named_args = exclude_anonymous_args(depends_on, ref, method_args)
+      RedisMemo::Cache.local_dependency_cache[ref.class][depends_on][named_args] ||= extract_dependencies(ref, *method_args, &depends_on)
     else
-      extract_dependencies(ref, *method_args, **method_kwargs, &depends_on)
+      extract_dependencies(ref, *method_args, &depends_on)
     end
   end
 
@@ -160,9 +158,7 @@ module RedisMemo::MemoizeMethod
       positional_args
     end
   end
-
-  private
-
+private
   def self.is_named?(param)
     param.size == 2 && param.last != :_
   end

@@ -102,7 +102,7 @@ describe RedisMemo::Memoizable::Invalidation do
     context 'with dependencies of other methods' do
       klass = Class.new do
         extend RedisMemo::MemoizeMethod
-
+  
         attr_accessor :calc_count
         attr_reader :id
 
@@ -113,7 +113,7 @@ describe RedisMemo::Memoizable::Invalidation do
         def calc(x)
           @calc_count += 1
         end
-
+  
         def calc_b_c(x)
           @calc_count += 1
         end
@@ -171,7 +171,6 @@ describe RedisMemo::Memoizable::Invalidation do
         # Expect that the mapped args are correct
         depends_on = obj.singleton_class.instance_variable_get(:@__redis_memo_method_dependencies)[:test]
         expect(RedisMemo::Cache.local_dependency_cache[obj.class][depends_on].key?(named_args)).to be true
-        RedisMemo::Cache.local_dependency_cache.clear
       end
 
       before(:each) do
@@ -180,7 +179,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'works using a dependency block with a splat' do
         obj.class_eval do
-          memoize_method :test do |_, _, *args, _, a, **|; end
+          memoize_method :test do |_, _, *args, _, a|; end
         end
         RedisMemo::Cache.with_local_cache do
           add_test_case([2, 3, 5]) { 5.times { obj.test(1, 2, 3, 4, 5) } }
