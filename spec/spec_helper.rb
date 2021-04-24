@@ -1,4 +1,5 @@
 require 'database_cleaner/active_record'
+require 'rails'
 require 'simplecov'
 
 SimpleCov.start
