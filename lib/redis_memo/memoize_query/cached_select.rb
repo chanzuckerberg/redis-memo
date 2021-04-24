@@ -94,6 +94,11 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
   @@enabled_models = {}
 
+  # Thread locals to exchange information between RedisMemo and ActiveRecord
+  RedisMemo::ThreadLocalVar.define :arel
+  RedisMemo::ThreadLocalVar.define :substitues
+  RedisMemo::ThreadLocalVar.define :arel_bind_params
+
   def self.enabled_models
     @@enabled_models
   end
@@ -153,11 +158,11 @@ class RedisMemo::MemoizeQuery::CachedSelect
   end
 
   def self.extract_bind_params(sql)
-    ast = Thread.current[THREAD_KEY_AREL]&.ast
+    ast = RedisMemo::ThreadLocalVar.arel&.ast
     return false unless ast.is_a?(Arel::Nodes::SelectStatement)
     return false unless ast.to_sql == sql
 
-    Thread.current[THREAD_KEY_SUBSTITUTES] ||= {}
+    RedisMemo::ThreadLocalVar.substitues ||= {}
     # Iterate through the Arel AST in a Depth First Search
     bind_params = extract_bind_params_recurse(ast)
     return false unless bind_params
@@ -165,39 +170,39 @@ class RedisMemo::MemoizeQuery::CachedSelect
     bind_params.uniq!
     return false unless bind_params.memoizable?
 
-    Thread.current[THREAD_KEY_AREL_BIND_PARAMS] = bind_params
+    RedisMemo::ThreadLocalVar.arel_bind_params = bind_params
     true
   end
 
   def self.current_query_bind_params
-    Thread.current[THREAD_KEY_AREL_BIND_PARAMS]
+    RedisMemo::ThreadLocalVar.arel_bind_params
   end
 
   def self.current_query=(arel)
-    Thread.current[THREAD_KEY_AREL] = arel
+    RedisMemo::ThreadLocalVar.arel = arel
   end
 
   def self.current_substitutes=(substitutes)
-    Thread.current[THREAD_KEY_SUBSTITUTES] = substitutes
+    RedisMemo::ThreadLocalVar.substitues = substitutes
   end
 
   def self.reset_current_query
-    Thread.current[THREAD_KEY_AREL] = nil
-    Thread.current[THREAD_KEY_SUBSTITUTES] = nil
-    Thread.current[THREAD_KEY_AREL_BIND_PARAMS] = nil
+    RedisMemo::ThreadLocalVar.arel = nil
+    RedisMemo::ThreadLocalVar.substitues = nil
+    RedisMemo::ThreadLocalVar.arel_bind_params = nil
   end
 
   def self.with_new_query_context
-    prev_arel = Thread.current[THREAD_KEY_AREL]
-    prev_substitutes = Thread.current[THREAD_KEY_SUBSTITUTES]
-    prev_bind_params = Thread.current[THREAD_KEY_AREL_BIND_PARAMS]
+    prev_arel = RedisMemo::ThreadLocalVar.arel
+    prev_substitutes = RedisMemo::ThreadLocalVar.substitues
+    prev_bind_params = RedisMemo::ThreadLocalVar.arel_bind_params
     RedisMemo::MemoizeQuery::CachedSelect.reset_current_query
 
     yield
   ensure
-    Thread.current[THREAD_KEY_AREL] = prev_arel
-    Thread.current[THREAD_KEY_SUBSTITUTES] = prev_substitutes
-    Thread.current[THREAD_KEY_AREL_BIND_PARAMS] = prev_bind_params
+    RedisMemo::ThreadLocalVar.arel = prev_arel
+    RedisMemo::ThreadLocalVar.substitues = prev_substitutes
+    RedisMemo::ThreadLocalVar.arel_bind_params = prev_bind_params
   end
 
   private
@@ -229,7 +234,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       return unless binding_relation
 
       rights = node.right.is_a?(Array) ? node.right : [node.right]
-      substitutes = Thread.current[THREAD_KEY_SUBSTITUTES]
+      substitutes = RedisMemo::ThreadLocalVar.substitues
 
       rights.each do |right|
         case right
@@ -362,9 +367,4 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
     end
   end
-
-  # Thread locals to exchange information between RedisMemo and ActiveRecord
-  THREAD_KEY_AREL = :__redis_memo_memoize_query_cached_select_arel__
-  THREAD_KEY_SUBSTITUTES = :__redis_memo_memoize_query_cached_select_substitues__
-  THREAD_KEY_AREL_BIND_PARAMS = :__redis_memo_memoize_query_cached_select_arel_bind_params__
 end
