@@ -315,7 +315,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       # Inline SQL
       return bind_params if is_comparison_expr(node.expr)
       extract_bind_params_recurse(node.expr)
-    when NodeHasComparators
+    when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
       return bind_params 
     when Arel::Nodes::And
       node.children.each do |child|
@@ -346,8 +346,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   # Whether the expression of the node has the compare operators
   def self.is_comparison_expr(expr)
     return false if !expr.is_a?(Arel::Nodes::SqlLiteral)
-    compare_operators = ['>', '>=', '<', '<=', '!=']
-    compare_operators.any?{ |comparator| expr.to_s.include?(comparator) }
+    %w[> >= < <= !=].any?{ |comparator| expr.to_s.include?(comparator) }
   end
 
   def self.extract_binding_relation(table_node)
@@ -367,17 +366,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
         else
           false
         end
-      end
-    end
-  end
-
-  class NodeHasComparators
-    def self.===(node)
-      case node
-      when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
-        true
-      else
-        false
       end
     end
   end
