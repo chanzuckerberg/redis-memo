@@ -313,9 +313,9 @@ class RedisMemo::MemoizeQuery::CachedSelect
       bind_params
     when Arel::Nodes::Grouping
       # Inline SQL
-      return if node.expr.is_a?(Arel::Nodes::SqlLiteral)
-
       extract_bind_params_recurse(node.expr)
+    when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
+      return bind_params 
     when Arel::Nodes::And
       node.children.each do |child|
         bind_params = bind_params.product(
@@ -336,11 +336,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
 
       bind_params
-
-    when Arel::Nodes::NotEqual
-      # We don't cache based on NOT queries (where.not) because it is unbound
-      # but we memoize queries with NOT and other bound queries, so we return the original bind_params
-      return bind_params
     else
       # Not yet supported
       return
