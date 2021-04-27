@@ -12,6 +12,7 @@ module RedisMemo
   ThreadLocalVar.define :connection_attempts_count
   ThreadLocalVar.define :max_connection_attempts
 
+  require 'redis_memo/errors'
   require 'redis_memo/memoize_method'
   require 'redis_memo/memoize_query' if defined?(ActiveRecord)
   require 'redis_memo/railtie' if defined?(Rails) && defined?(Rails::Railtie)
@@ -107,9 +108,4 @@ module RedisMemo
       ThreadLocalVar.without_memo = true
     end
   end
-
-  # @todo Move errors to a separate file errors.rb
-  class ArgumentError < ::ArgumentError; end
-  class RuntimeError < ::RuntimeError; end
-  class WithoutMemoization < Exception; end
 end
