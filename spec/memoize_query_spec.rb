@@ -428,7 +428,7 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  context 'for ordered queries' do 
+  context 'for ordered queries' do
     it 'does not memoize unbound ordered queries' do
       expect_not_to_use_redis do
         Site.order(:a).take(5)
@@ -538,180 +538,96 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  context 'when the queries have compare operators' do
-    RSpec.shared_examples 'only memoizes when there are bound conditions' do
-      it 'does not memoize when there are only comparators' do
-        relations_with_only_comparator.each do |relation|
-          expect_not_to_use_redis do
-            expect(relation.to_a).to eq(result)
-          end
-        end
-      end
-
-      it 'memoizes queries with both comparator and other bound conditions' do
-        relations_with_comparator_and_other.each do |relation|
-          expect_to_use_redis do
-            expect(relation.to_a).to eq(result)
-          end
-        end
-      end
-    end
-
-    RSpec.shared_examples 'when update happens to the records' do
-      it 'it updates the affected query result' do
-        update
-        relations_with_comparator_and_other.each do |relation|
-          expect_to_use_redis do
-            expect(relation.reload.to_a).to eq(result)
-          end
-        end
-      end
-    end
-
-    RSpec.shared_examples 'with local cache' do
-      it 'only invalidates the affected query result sets' do
-        RedisMemo::Cache.with_local_cache do 
-          relations_with_comparator_and_other.each do |relation|
-            expect_to_use_redis do
-              expect(relation.to_a).to eq(unaffected_result)
-            end
-          end
-  
-          unaffected_creation
-  
-          # Does not affect with the creation because it is not dependent
-          relations_with_comparator_and_other.each do |relation|
-            expect_not_to_use_redis do
-              expect(relation.reload.to_a).to eq(unaffected_result)
-            end
-          end
-  
-          update
-  
-          # Will affect with the update
-          relations_with_comparator_and_other.each do |relation|
-            expect_to_use_redis do
-              expect(relation.reload.to_a).to eq(affected_result)
-            end
-          end
-        end
-      end
-    end
-  end
-
-  context 'when the queries have greater than (and or equal) operators' do
+  context 'when the queries have comparison operators' do
     let!(:record) { Site.create!(a: 2, b: 2) }
-    
-    # The following two relations are both SELECT * FROM Site where a > 1
-    let!(:relation1_with_only_comparator) { Site.where('a > ?', 1) }
-    let!(:relation2_with_only_comparator) { Site.where(a: 2..Float::INFINITY) }
-    let!(:relation3_with_only_comparator) { Site.where('a > ? AND b = ?', 1, 2) }
-    # The following two relations are both SELECT * FROM Site where a >= 2
-    let!(:relation4_with_only_comparator) { Site.where('a >= ?', 2) }
-    let!(:relation5_with_only_comparator) { Site.where('a >= ? AND b = ?', 2, 2) }
-    let!(:relations_with_only_comparator) do
-      [
-        relation1_with_only_comparator, 
-        relation2_with_only_comparator, 
-        relation3_with_only_comparator,
-        relation4_with_only_comparator,
-        relation5_with_only_comparator
-      ] 
+    let!(:relation_with_only_greater_than) { Site.where(a: 2..Float::INFINITY) }
+    let!(:relation_with_only_less_than) { Site.where(a: -Float::INFINITY..3) }
+    let!(:relation_with_greater_than_and_other) { Site.where(a: 2..Float::INFINITY).where(b: 2) }
+    let!(:relation_with_less_than_and_other) { Site.where(a: -Float::INFINITY..3).where(b: 2) }
+
+    it 'does not memoize queries with only comparator' do
+      expect_not_to_use_redis do
+        expect(relation_with_only_greater_than.reload.to_a).to eq([record])
+      end
+
+      expect_not_to_use_redis do
+        expect(relation_with_only_less_than.reload.to_a).to eq([record])
+      end
     end
 
-    # The following two relations are both SELECT * FROM Site where a > 1 AND b = 2
-    let!(:relation1_with_comparator_and_other) { Site.where('a > ?', 1).where(b: 2) }
-    let!(:relation2_with_comparator_and_other) { Site.where(a: 2..Float::INFINITY).where(b: 2) }
-    # The following two relations are both SELECT * FROM Site where a >= 2 AND b = 2
-    let!(:relation3_with_comparator_and_other) { Site.where('a >= ?', 2).where(b: 2) }
-    let!(:relations_with_comparator_and_other) do
-      [
-        relation1_with_comparator_and_other, 
-        relation2_with_comparator_and_other, 
-        relation3_with_comparator_and_other,
-      ] 
+    it 'memoizes queries with both comparator and other bound conditions' do
+      expect_to_use_redis do
+        expect(relation_with_greater_than_and_other.reload.to_a).to eq([record])
+      end
+
+      expect_to_use_redis do
+        expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
+      end
     end
 
-    # Deliberately use let below to let it be lazy-evaluated
-    # An update which will affect the results of the relation_with_comparator_and_other above
-    let(:update) { record.update(a: 1) }
-    # A creation which will not affect the results of the relation_with_comparator_and_other above
-    let(:unaffected_creation) { Site.create(b: 1) }
+    it 'it updates the affected query result when necessary' do
+      record.update!(a: 1)
 
-    it_behaves_like 'only memoizes when there are bound conditions' do
-      let!(:result) { [record] }
+      expect_to_use_redis do
+        expect(relation_with_greater_than_and_other.reload.to_a).to eq([])
+        expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
+      end
+
+      record.update!(a: 4)
+
+      expect_to_use_redis do
+        expect(relation_with_greater_than_and_other.reload.to_a).to eq([record])
+        expect(relation_with_less_than_and_other.reload.to_a).to eq([])
+      end
     end
 
-    it_behaves_like 'when update happens to the records' do 
-      let!(:result) { [] }
-    end
+    it 'only invalidates the affected query result sets' do
+      RedisMemo::Cache.with_local_cache do
+        expect_to_use_redis do
+          expect(relation_with_greater_than_and_other.reload.to_a).to eq([record])
+        end
 
-    it_behaves_like 'with local cache' do 
-      let!(:unaffected_result) { [record] }
-      let!(:affected_result) { [] }
-    end
-  end
+        expect_to_use_redis do
+          expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
+        end
 
-  context 'when the queries have less than (and or equal) operators' do
-    let!(:record) { Site.create!(a: 1, b: 2) }
+        # When unaffected creation happens, it does not affect the unaffected query
+        # Creating new record with a = 0 and b = 3 should not affect the query of (a >= 3 and b = 2) or (a <= 2 and b = 2)
+        new_record = Site.create!(b: 3)
 
-    # The following two relations are both SELECT * FROM Site where a < 2
-    let!(:relation1_with_only_comparator) { Site.where('a < ?', 2) }
-    let!(:relation2_with_only_comparator) { Site.where(a: -Float::INFINITY..1) }
-    let!(:relation3_with_only_comparator) { Site.where('a < ? AND b = ?', 2, 2) }
-    # The following two relations are both SELECT * FROM Site where a <= 1
-    let!(:relation4_with_only_comparator) { Site.where('a <= ?', 1) }
-    let!(:relation5_with_only_comparator) { Site.where('a <= ? AND b = ?', 1, 2) }
-    let!(:relations_with_only_comparator) do
-      [
-        relation1_with_only_comparator, 
-        relation2_with_only_comparator, 
-        relation3_with_only_comparator,
-        relation4_with_only_comparator,
-        relation5_with_only_comparator
-      ] 
-    end
+        expect_not_to_use_redis do
+          expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
+        end
 
-    # The following two relations are both SELECT * FROM Site where a < 2 AND b = 2
-    let!(:relation1_with_comparator_and_other) { Site.where('a < ?', 2).where(b: 2) }
-    let!(:relation2_with_comparator_and_other) { Site.where(a: -Float::INFINITY..1).where(b: 2) }
-    # The following two relations are both SELECT * FROM Site where a <= 1 AND b = 2
-    let!(:relation3_with_comparator_and_other) { Site.where('a <= ?', 1).where(b: 2) }
-    let!(:relations_with_comparator_and_other) do
-      [
-        relation1_with_comparator_and_other, 
-        relation2_with_comparator_and_other, 
-        relation3_with_comparator_and_other,
-      ] 
-    end
+        expect_not_to_use_redis do
+          expect(relation_with_greater_than_and_other.reload.to_a).to eq([record])
+        end
 
-    # Deliberately use let below to let it be lazy-evaluated
-    # An update which will affect the results of the relation_with_comparator_and_other above
-    let(:update) { record.update(a: 2) }
-    # A creation which will not affect the results of the relation_with_comparator_and_other above
-    let(:unaffected_creation) { Site.create(b: 1) }
+        # When an affected update happens, it updates the affected results
+        record.update!(a: 1)
 
-    it_behaves_like 'only memoizes when there are bound conditions' do
-      let!(:result) { [record] }
-    end
+        expect_to_use_redis do
+          expect(relation_with_greater_than_and_other.reload.to_a).to eq([])
+          expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
+        end
 
-    it_behaves_like 'when update happens to the records' do 
-      let!(:result) { [] }
-    end
+        record.update!(a: 4)
 
-    it_behaves_like 'with local cache' do 
-      let!(:unaffected_result) { [record] }
-      let!(:affected_result) { [] }
+        expect_to_use_redis do
+          expect(relation_with_greater_than_and_other.reload.to_a).to eq([record])
+          expect(relation_with_less_than_and_other.reload.to_a).to eq([])
+        end
+      end
     end
   end
 
-  context 'when the queries have NOT' do 
+  context 'when the queries have NOT' do
     let!(:record) { Site.create!(a: 1, b: 1) }
     let!(:relation1_with_only_not) { Site.where.not(a: 2) }
     let!(:relation2_with_only_not) { Site.where.not(a: 2, b: 2) }
     let!(:relation3_with_only_not) { Site.where.not(a: 2).where.not(b: 1) }
     let!(:relation_with_not_and_other) { Site.where.not(a: 2).where(b: 1) }
-    # where.not(a: ..., b:...) relation is treated differently in different Rails versions, 
+    # where.not(a: ..., b:...) relation is treated differently in different Rails versions,
     # so we test its different behaviors in different versions next
     # Details: https://bigbinary.com/blog/rails-6-deprecates-where-not-working-as-nor-and-will-change-to-nand-in-rails-6-1
     let!(:special_relation_with_not) { Site.where.not(a: 2, b: 1) }
@@ -758,12 +674,12 @@ describe RedisMemo::MemoizeQuery do
     end
 
     it 'only invalidates the affected query result sets' do
-      RedisMemo::Cache.with_local_cache do 
+      RedisMemo::Cache.with_local_cache do
         # WHERE a != 2 and b = 1
         expect_to_use_redis do
           expect(relation_with_not_and_other.to_a).to eq([record])
         end
-        
+
         Site.create!(b: 2)
 
         # The new created record does not affect WHERE a != 2 and b = 1
@@ -778,5 +694,5 @@ describe RedisMemo::MemoizeQuery do
         end
       end
     end
-  end  
+  end
 end
