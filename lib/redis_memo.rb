@@ -7,7 +7,8 @@ require 'securerandom'
 
 module RedisMemo
   require 'redis_memo/memoize_method'
-  require 'redis_memo/memoize_query'
+  require 'redis_memo/memoize_query' if defined?(ActiveRecord)
+  require 'redis_memo/railtie' if defined?(Rails) && defined?(Rails::Railtie)
 
   # A process-level +RedisMemo::Options+ instance that stores the global
   # options. This object can be modified by +RedisMemo.configure+.
