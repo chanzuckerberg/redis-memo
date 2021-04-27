@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require_relative 'util'
 
 class RedisMemo::Memoizable
   require_relative 'memoizable/dependency'
@@ -22,8 +23,8 @@ class RedisMemo::Memoizable
   def cache_key
     @cache_key ||= [
       self.class.name,
-      RedisMemo.checksum(
-        RedisMemo.deep_sort_hash(@props).to_json,
+      RedisMemo::Util.checksum(
+        RedisMemo::Util.deep_sort_hash(@props).to_json,
       ),
     ].join(':')
   end
@@ -42,7 +43,7 @@ class RedisMemo::Memoizable
     version_hash = dependents_cache_keys.zip(dependents_versions).to_h
 
     cache_key_groups.map do |cache_keys|
-      RedisMemo.checksum(version_hash.slice(*cache_keys).to_json)
+      RedisMemo::Util.checksum(version_hash.slice(*cache_keys).to_json)
     end
   end
 
@@ -51,7 +52,7 @@ class RedisMemo::Memoizable
       cache_key = instance.cache_key
       RedisMemo::Memoizable::Invalidation.bump_version_later(
         cache_key,
-        RedisMemo.uuid,
+        RedisMemo::Util.uuid,
       )
     end
 
@@ -99,7 +100,7 @@ class RedisMemo::Memoizable
         # cached result.
         need_to_bump_versions = true
 
-        new_version = RedisMemo.uuid
+        new_version = RedisMemo::Util.uuid
         RedisMemo::Memoizable::Invalidation.bump_version_later(
           key,
           new_version,

@@ -114,7 +114,7 @@ module RedisMemo::Memoizable::Invalidation
       RedisMemo::Cache.redis.eval(
         LUA_BUMP_VERSION,
         keys: [task.key],
-        argv: [task.previous_version, task.version, RedisMemo.uuid, ttl],
+        argv: [task.previous_version, task.version, RedisMemo::Util.uuid, ttl],
       )
       RedisMemo::Tracer.set_tag(enqueue_to_finish: task.duration)
     end

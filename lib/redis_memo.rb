@@ -60,25 +60,6 @@ module RedisMemo
     RedisMemo::Batch.close
   end
 
-  # @todo Move this method out of the top namespace
-  def self.checksum(serialized)
-    Digest::SHA1.base64digest(serialized)
-  end
-
-  # @todo Move this method out of the top namespace
-  def self.uuid
-    SecureRandom.uuid
-  end
-
-  # @todo Move this method out of the top namespace
-  def self.deep_sort_hash(orig_hash)
-    {}.tap do |new_hash|
-      orig_hash.sort.each do |k, v|
-        new_hash[k] = v.is_a?(Hash) ? deep_sort_hash(v) : v
-      end
-    end
-  end
-
   # Whether the current execution context has been configured to skip
   # memoization and use the uncached code path.
   #
