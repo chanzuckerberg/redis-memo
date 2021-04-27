@@ -3,26 +3,26 @@ require_relative 'cache'
 require_relative 'tracer'
 
 class RedisMemo::Batch
-  THREAD_KEY = :__redis_memo_current_batch__
+  RedisMemo::ThreadLocalVar.define :batch
 
   def self.open
     if current
       raise RedisMemo::RuntimeError, 'Batch can not be nested'
     end
 
-    Thread.current[THREAD_KEY] = []
+    RedisMemo::ThreadLocalVar.batch = []
   end
 
   def self.close
     if current
       futures = current
-      Thread.current[THREAD_KEY] = nil
+      RedisMemo::ThreadLocalVar.batch = nil
       futures
     end
   end
 
   def self.current
-    Thread.current[THREAD_KEY]
+    RedisMemo::ThreadLocalVar.batch
   end
 
   def self.execute

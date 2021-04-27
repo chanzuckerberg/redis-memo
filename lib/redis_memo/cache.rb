@@ -6,9 +6,9 @@ require_relative 'connection_pool'
 class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   class Rescuable < Exception; end
 
-  THREAD_KEY_LOCAL_CACHE            = :__redis_memo_cache_local_cache__
-  THREAD_KEY_LOCAL_DEPENDENCY_CACHE = :__redis_memo_local_cache_dependency_cache__
-  THREAD_KEY_RAISE_ERROR            = :__redis_memo_cache_raise_error__
+  RedisMemo::ThreadLocalVar.define :local_cache
+  RedisMemo::ThreadLocalVar.define :local_dependency_cache
+  RedisMemo::ThreadLocalVar.define :raise_error
 
   @@redis = nil
   @@redis_store = nil
@@ -17,9 +17,9 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     RedisMemo::DefaultOptions.redis_error_handler&.call(exception, method)
     RedisMemo::DefaultOptions.logger&.warn(exception.full_message)
 
-    RedisMemo.incr_connection_attempts if exception.is_a?(Redis::BaseConnectionError)
+    RedisMemo.send(:incr_connection_attempts) if exception.is_a?(Redis::BaseConnectionError)
 
-    if Thread.current[THREAD_KEY_RAISE_ERROR]
+    if RedisMemo::ThreadLocalVar.raise_error
       raise RedisMemo::Cache::Rescuable
     else
       returning
@@ -50,11 +50,11 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   # ActiveSupport::Cache::Entry object -- which is slower comparing to a simple
   # hash storing object references
   def self.local_cache
-    Thread.current[THREAD_KEY_LOCAL_CACHE]
+    RedisMemo::ThreadLocalVar.local_cache
   end
 
   def self.local_dependency_cache
-    Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE]
+    RedisMemo::ThreadLocalVar.local_dependency_cache
   end
 
   # See https://github.com/rails/rails/blob/fe76a95b0d252a2d7c25e69498b720c96b243ea2/activesupport/lib/active_support/cache/redis_cache_store.rb#L477
@@ -69,19 +69,19 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
 
   class << self
     def with_local_cache(&blk)
-      Thread.current[THREAD_KEY_LOCAL_CACHE] = {}
-      Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE] = {}
+      RedisMemo::ThreadLocalVar.local_cache = {}
+      RedisMemo::ThreadLocalVar.local_dependency_cache = {}
       blk.call
     ensure
-      Thread.current[THREAD_KEY_LOCAL_CACHE] = nil
-      Thread.current[THREAD_KEY_LOCAL_DEPENDENCY_CACHE] = nil
+      RedisMemo::ThreadLocalVar.local_cache = nil
+      RedisMemo::ThreadLocalVar.local_dependency_cache = nil
     end
 
     # RedisCacheStore doesn't read from the local cache before reading from redis
     def read_multi(*keys, raw: false, raise_error: false)
       return {} if keys.empty?
 
-      Thread.current[THREAD_KEY_RAISE_ERROR] = raise_error
+      RedisMemo::ThreadLocalVar.raise_error = raise_error
 
       local_entries = local_cache&.slice(*keys) || {}
 
@@ -100,7 +100,7 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     end
 
     def write(key, value, disable_async: false, raise_error: false, **options)
-      Thread.current[THREAD_KEY_RAISE_ERROR] = raise_error
+      RedisMemo::ThreadLocalVar.raise_error = raise_error
 
       if local_cache
         local_cache[key] = value
@@ -111,7 +111,7 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
         redis_store.write(key, value, **options)
       else
         async.call do
-          Thread.current[THREAD_KEY_RAISE_ERROR] = raise_error
+          RedisMemo::ThreadLocalVar.raise_error = raise_error
           redis_store.write(key, value, **options)
         end
       end
