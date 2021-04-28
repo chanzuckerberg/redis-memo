@@ -1,0 +1,15 @@
+AllCops:
+  ExtraDetails: true
+  DisabledByDefault: true
+
+inherit_from:
+  - bundler.yml
+  - gemspec.yml
+  - layout.yml
+  - lint.yml
+  - metrics.yml
+  - naming.yml
+  - security.yml
+  - style.yml
+  - performance.yml
+  - rspec.yml

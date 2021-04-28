@@ -1,0 +1,205 @@
+require:
+  - rubocop-rails
+
+Rails:
+  Include:
+    - app/**/*
+    - config/**/*
+    - db/**/*
+    - spec/**/*
+  Exclude:
+    - spec/lib/**/*
+
+Rails/ActionFilter:
+  Enabled: true
+
+Rails/ActiveRecordAliases:
+  Enabled: true
+
+Rails/ActiveRecordOverride:
+  Enabled: true
+
+Rails/ActiveSupportAliases:
+  Enabled: true
+
+Rails/ApplicationController:
+  Enabled: true
+
+Rails/ApplicationJob:
+  Enabled: true
+
+Rails/ApplicationMailer:
+  Enabled: true
+
+Rails/ApplicationRecord:
+  Enabled: true
+
+Rails/AssertNot:
+  Enabled: true
+
+Rails/BelongsTo:
+  Enabled: true
+
+Rails/Blank:
+  Enabled: true
+
+Rails/BulkChangeTable:
+  Enabled: true
+
+Rails/ContentTag:
+  Enabled: true
+
+Rails/CreateTableWithTimestamps:
+  Enabled: true
+
+Rails/Date:
+  Enabled: true
+
+Rails/Delegate:
+  Enabled: false
+
+Rails/DelegateAllowBlank:
+  Enabled: false
+
+Rails/DynamicFindBy:
+  Enabled: true
+  AllowedMethods:
+  - find_by_global_id!
+  - find_by_email
+  - find_by_email!
+  - find_by_hex
+  - find_by_hex!
+
+Rails/EnumHash:
+  Enabled: true
+
+Rails/EnumUniqueness:
+  Enabled: true
+
+Rails/EnvironmentComparison:
+  Enabled: true
+
+Rails/Exit:
+  Enabled: true
+
+Rails/FilePath:
+  Enabled: true
+
+Rails/FindBy:
+  Enabled: true
+
+Rails/FindEach:
+  Enabled: true
+
+Rails/HasAndBelongsToMany:
+  Enabled: true
+
+Rails/HasManyOrHasOneDependent:
+  Enabled: true
+
+Rails/HelperInstanceVariable:
+  Enabled: true
+
+Rails/HttpPositionalArguments:
+  Enabled: true
+
+Rails/HttpStatus:
+  Enabled: true
+
+Rails/IgnoredSkipActionFilterOption:
+  Enabled: true
+
+Rails/IndexBy:
+  Enabled: true
+
+Rails/IndexWith:
+  Enabled: true
+
+Rails/InverseOf:
+  Enabled: true
+
+Rails/LexicallyScopedActionFilter:
+  Enabled: true
+
+Rails/LinkToBlank:
+  Enabled: true
+
+Rails/NotNullColumn:
+  Enabled: true
+
+Rails/Output:
+  Enabled: true
+  Include:
+    - app/**/*
+
+Rails/OutputSafety:
+  Enabled: true
+
+Rails/Pick:
+  Enabled: true
+
+Rails/PluralizationGrammar:
+  Enabled: true
+
+Rails/Presence:
+  Enabled: true
+
+Rails/Present:
+  Enabled: true
+
+Rails/RakeEnvironment:
+  Enabled: true
+
+Rails/ReadWriteAttribute:
+  Enabled: true
+
+Rails/RedundantAllowNil:
+  Enabled: true
+
+Rails/RedundantReceiverInWithOptions:
+  Enabled: true
+
+Rails/ReflectionClassName:
+  Enabled: true
+
+Rails/RefuteMethods:
+  Enabled: true
+
+Rails/RelativeDateConstant:
+  Enabled: true
+
+Rails/RequestReferer:
+  Enabled: true
+
+Rails/ReversibleMigration:
+  Enabled: true
+
+Rails/SafeNavigation:
+  Enabled: true
+
+Rails/SafeNavigationWithBlank:
+  Enabled: true
+
+Rails/SaveBang:
+  Enabled: true
+
+Rails/ScopeArgs:
+  Enabled: true
+
+Rails/SkipsModelValidations:
+  Enabled: true
+
+Rails/TimeZone:
+  Enabled: true
+
+Rails/UniqBeforePluck:
+  Enabled: true
+
+Rails/UniqueValidationWithoutIndex:
+  Enabled: true
+
+Rails/UnknownEnv:
+  Enabled: true
+
+Rails/Validation:
+  Enabled: true

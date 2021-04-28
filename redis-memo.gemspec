@@ -26,5 +26,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'railties', '>= 5.2'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'rspec', '~> 3.2'
+  s.add_development_dependency 'rubocop'
+  s.add_development_dependency 'rubocop-performance'
+  s.add_development_dependency 'rubocop-rspec'
   s.add_development_dependency 'simplecov'
 end
