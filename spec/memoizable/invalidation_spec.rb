@@ -10,20 +10,20 @@ describe RedisMemo::Memoizable::Invalidation do
 
   it 'bumps version' do
     RedisMemo::Memoizable::Invalidation.bump_version(
-      RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil)
+      RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil),
     )
     version = redis.get('key')
     expect(version).to eq('version')
 
     RedisMemo::Memoizable::Invalidation.bump_version(
-      RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', nil)
+      RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', nil),
     )
     new_version = redis.get('key')
     expect(new_version).not_to eq(version)
     expect(new_version).not_to eq('new_version')
 
     RedisMemo::Memoizable::Invalidation.bump_version(
-      RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', new_version)
+      RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', new_version),
     )
     new_version = redis.get('key')
     expect(new_version).to eq('new_version')
@@ -72,9 +72,7 @@ describe RedisMemo::Memoizable::Invalidation do
       attr_accessor :done
 
       def eval(*)
-        until @done
-          sleep(1)
-        end
+        sleep(1) until @done
       end
 
       def with(*)
@@ -106,7 +104,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
         attr_accessor :calc_count
 
-        def calc(x)
+        def calc(_x)
           @calc_count += 1
         end
 

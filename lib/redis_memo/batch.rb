@@ -1,4 +1,5 @@
- # frozen_string_literal: true
+# frozen_string_literal: true
+
 require_relative 'cache'
 require_relative 'tracer'
 
@@ -7,7 +8,7 @@ class RedisMemo::Batch
 
   def self.open
     if current
-      raise RedisMemo::RuntimeError, 'Batch can not be nested'
+      raise RedisMemo::RuntimeError.new('Batch can not be nested')
     end
 
     RedisMemo::ThreadLocalVar.batch = []

@@ -12,13 +12,14 @@ class RedisMemo::Memoizable::Dependency
     @nodes.values
   end
 
-  def depends_on(dependency, **conditions)
+  def depends_on(dependency)
     case dependency
     when self.class
       nodes.merge!(dependency.nodes)
     when RedisMemo::Memoizable
       memo = dependency
       return if nodes.include?(memo.cache_key)
+
       nodes[memo.cache_key] = memo
 
       if memo.depends_on
@@ -40,28 +41,24 @@ class RedisMemo::Memoizable::Dependency
         end
       end
     else
-      raise(
-        RedisMemo::ArgumentError,
-        "Invalid dependency #{dependency}"
-      )
+      raise RedisMemo::ArgumentError.new("Invalid dependency #{dependency}")
     end
   end
-
-  private
 
   def self.extract_from_relation(relation)
     connection = ActiveRecord::Base.connection
     unless connection.respond_to?(:dependency_of)
-      raise RedisMemo::WithoutMemoization, 'Caching active record queries is currently disabled on RedisMemo'
+      raise RedisMemo::WithoutMemoization.new('Caching active record queries is currently disabled on RedisMemo')
     end
+
     # Extract the dependent memos of an Arel without calling exec_query to actually execute the query
     RedisMemo::MemoizeQuery::CachedSelect.with_new_query_context do
-      query, binds, _ = connection.send(:to_sql_and_binds, relation.arel)
+      query, binds, = connection.send(:to_sql_and_binds, relation.arel)
       RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
       is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
 
       unless is_query_cached
-        raise RedisMemo::WithoutMemoization, 'Arel query is not cached using RedisMemo'
+        raise RedisMemo::WithoutMemoization.new('Arel query is not cached using RedisMemo')
       end
 
       connection.dependency_of(:exec_query, query, nil, binds)

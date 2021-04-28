@@ -1,10 +1,13 @@
- # frozen_string_literal: true
+# frozen_string_literal: true
+
 require_relative 'options'
 require_relative 'redis'
 require_relative 'connection_pool'
 
 class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
-  class Rescuable < Exception; end
+  # This needs to be an Exception since RedisCacheStore rescues all
+  # RuntimeErrors
+  class Rescuable < Exception; end # rubocop:disable Lint/InheritException
 
   RedisMemo::ThreadLocalVar.define :local_cache
   RedisMemo::ThreadLocalVar.define :local_dependency_cache
@@ -61,17 +64,17 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
   # We overwrite this private method so we can also rescue ConnectionPool::TimeoutErrors
   def failsafe(method, returning: nil)
     yield
-  rescue ::Redis::BaseError, ::ConnectionPool::TimeoutError => e
-    handle_exception exception: e, method: method, returning: returning
+  rescue ::Redis::BaseError, ::ConnectionPool::TimeoutError => error
+    handle_exception exception: error, method: method, returning: returning
     returning
   end
   private :failsafe
 
   class << self
-    def with_local_cache(&blk)
+    def with_local_cache
       RedisMemo::ThreadLocalVar.local_cache = {}
       RedisMemo::ThreadLocalVar.local_dependency_cache = {}
-      blk.call
+      yield
     ensure
       RedisMemo::ThreadLocalVar.local_cache = nil
       RedisMemo::ThreadLocalVar.local_dependency_cache = nil

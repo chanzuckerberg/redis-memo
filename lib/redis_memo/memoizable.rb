@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'util'
 
 class RedisMemo::Memoizable
@@ -58,8 +59,6 @@ class RedisMemo::Memoizable
 
     RedisMemo::Memoizable::Invalidation.drain_invalidation_queue
   end
-
-  private
 
   def self.find_or_create_versions(keys)
     need_to_bump_versions = false

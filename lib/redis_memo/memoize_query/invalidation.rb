@@ -17,7 +17,7 @@ class RedisMemo::MemoizeQuery::Invalidation
         @redis_memo_class_memoizable ||= RedisMemo::MemoizeQuery.create_memo(self)
       end
 
-      %i(delete decrement! increment!).each do |method_name|
+      %i[delete decrement! increment!].each do |method_name|
         alias_method :"without_redis_memo_invalidation_#{method_name}", method_name
 
         define_method method_name do |*args|
@@ -32,13 +32,13 @@ class RedisMemo::MemoizeQuery::Invalidation
 
     # Methods that won't trigger model callbacks
     # https://guides.rubyonrails.org/active_record_callbacks.html#skipping-callbacks
-    %i(
+    %i[
       decrement_counter
       delete_all delete_by
       increment_counter
       touch_all
       update_column update_columns update_all update_counters
-    ).each do |method_name|
+    ].each do |method_name|
       # Example: Model.update_all
       rewrite_default_method(
         model_class,
@@ -56,27 +56,27 @@ class RedisMemo::MemoizeQuery::Invalidation
       )
     end
 
-    %i(
+    %i[
       insert insert! insert_all insert_all!
-    ).each do |method_name|
+    ].each do |method_name|
       rewrite_insert_method(
         model_class,
         method_name,
       )
     end
 
-    %i(
+    %i[
       upsert upsert_all
-    ).each do |method_name|
+    ].each do |method_name|
       rewrite_upsert_method(
         model_class,
         method_name,
       )
     end
 
-    %i(
+    %i[
       import import!
-    ).each do |method_name|
+    ].each do |method_name|
       rewrite_import_method(
         model_class,
         method_name,
@@ -115,8 +115,6 @@ class RedisMemo::MemoizeQuery::Invalidation
 
     result
   end
-
-  private
 
   #
   # There’s no good way to perform fine-grind cache invalidation when

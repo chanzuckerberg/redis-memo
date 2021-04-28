@@ -5,7 +5,7 @@ describe RedisMemo::MemoizeQuery do
     extend RedisMemo::MemoizeMethod
     extend RedisMemo::MemoizeQuery
 
-    enum my_enum: {x: 0, y: 1}
+    enum my_enum: { x: 0, y: 1 }
 
     class << self
       attr_accessor :spec_context
@@ -200,7 +200,7 @@ describe RedisMemo::MemoizeQuery do
         expect(Site.a_count(2)).to eq(1)
         expect(Site.a_count(3)).to eq(1)
 
-        Site.update({a: 0, b: 0})
+        Site.update({ a: 0, b: 0 })
         expect(Site.a_count(0)).to eq(2)
 
         Site.where(a: 0).update(a: 2)
@@ -242,14 +242,14 @@ describe RedisMemo::MemoizeQuery do
               Site.find(site.id)
             end
 
-            records = 5.times.map { {a: 2} }
+            records = 5.times.map { { a: 2 } }
             Site.insert_all!(records)
             expect(Site.a_count(2)).to eq(7)
 
             Site.insert!(records.last)
             expect(Site.a_count(2)).to eq(8)
 
-            Site.insert!({a: 0})
+            Site.insert!({ a: 0 })
             # site(a: 0) is not affected by the imports
             expect_not_to_use_redis do
               5.times { Site.find(site.id) }
@@ -266,14 +266,14 @@ describe RedisMemo::MemoizeQuery do
               Site.find(site.id)
             end
 
-            records = 5.times.map { {a: 2} }
+            records = 5.times.map { { a: 2 } }
             Site.upsert_all(records)
             expect(Site.a_count(2)).to eq(7)
 
             Site.upsert(records.last)
             expect(Site.a_count(2)).to eq(8)
 
-            Site.upsert({a: 0})
+            Site.upsert({ a: 0 })
             # site(a: 0) is not affected by the imports
             expect_not_to_use_redis do
               5.times { Site.find(site.id) }
@@ -302,7 +302,7 @@ describe RedisMemo::MemoizeQuery do
           records.each do |record|
             record.a = 4
           end
-          Site.import(records, on_duplicate_key_update: {conflict_target: [:id], columns: [:a]})
+          Site.import(records, on_duplicate_key_update: { conflict_target: [:id], columns: [:a] })
           expect(Site.a_count(4)).to eq(5)
 
           Site.import([])
@@ -367,12 +367,12 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 
-  it 'raises an error if a column does not exist' do
+  it 'raises an error if the argument is not supported' do
     dependency = RedisMemo::Memoizable::Dependency.new
 
     expect {
       dependency.instance_exec(nil) do
-        depends_on Site, not_a_real_column: '1'
+        depends_on Site
       end
     }.to raise_error(RedisMemo::ArgumentError)
   end
@@ -386,15 +386,14 @@ describe RedisMemo::MemoizeQuery do
     expect(memos[0].cache_key).to_not eq(memos[1].cache_key)
     expect(memos[0].cache_key).to eq(memos[2].cache_key)
 
-
     expect(
-      RedisMemo::MemoizeQuery.create_memo(Site, my_enum: 'x').cache_key
+      RedisMemo::MemoizeQuery.create_memo(Site, my_enum: 'x').cache_key,
     ).to eq(RedisMemo::MemoizeQuery.create_memo(Site, my_enum: 0).cache_key)
   end
 
   it 'memoizes nested queries' do
     expect_to_use_redis do
-      Site.where(id: Site.where(a: [1,2,3])).to_a
+      Site.where(id: Site.where(a: [1, 2, 3])).to_a
     end
   end
 
@@ -565,7 +564,7 @@ describe RedisMemo::MemoizeQuery do
       end
     end
 
-    it 'it updates the affected query result when necessary' do
+    it 'updates the affected query result when necessary' do
       record.update!(a: 1)
 
       expect_to_use_redis do
@@ -632,7 +631,6 @@ describe RedisMemo::MemoizeQuery do
     # Details: https://bigbinary.com/blog/rails-6-deprecates-where-not-working-as-nor-and-will-change-to-nand-in-rails-6-1
     let!(:special_relation_with_not) { Site.where.not(a: 2, b: 1) }
 
-
     it 'does not memoize queries with only NOT' do
       expect_not_to_use_redis do
         expect(relation1_with_only_not.to_a).to eq([record])
@@ -665,7 +663,7 @@ describe RedisMemo::MemoizeQuery do
       end
     end
 
-    it 'it updates the affected query result' do
+    it 'updates the affected query result' do
       record.update(a: 2)
 
       expect_to_use_redis do

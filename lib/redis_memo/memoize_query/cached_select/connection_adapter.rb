@@ -18,8 +18,8 @@ class RedisMemo::MemoizeQuery::CachedSelect
         # [Reids $model Load] $sql $binds
         RedisMemo::DefaultOptions.logger&.info(
           "[Redis] \u001b[36;1m#{args[1]} \u001b[34;1m#{args[0]}\u001b[0m #{
-            args[2].map { |bind| [bind.name, bind.value_for_database]}
-          }"
+            args[2].map { |bind| [bind.name, bind.value_for_database] }
+          }",
         )
 
         super(*args)

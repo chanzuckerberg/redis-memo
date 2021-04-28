@@ -10,6 +10,7 @@ describe RedisMemo::Redis do
     end
 
     def get(*); end
+
     def set(*); end
   end
 
@@ -20,7 +21,7 @@ describe RedisMemo::Redis do
       clients[options[:key]]
     end
 
-    client = RedisMemo::Redis.new(clients.keys.map { |key| {key: key} })
+    client = RedisMemo::Redis.new(clients.keys.map { |key| { key: key } })
 
     clients.each do |_, c|
       expect(c).to receive(:get).at_least(:once)
@@ -31,9 +32,9 @@ describe RedisMemo::Redis do
 
   it 'randomly selects a read replica to read from' do
     client = RedisMemo::Redis::WithReplicas.new([
-      {db: 0},
-      {db: 1},
-      {db: 2},
+      { db: 0 },
+      { db: 1 },
+      { db: 2 },
     ])
     replica1, replica2 = client.instance_variable_get(:@replicas)
 
@@ -59,7 +60,7 @@ describe RedisMemo::Redis do
   end
 
   it 'returns a hash when calling mapped_mget' do
-    client = RedisMemo::Redis::WithReplicas.new([{db: 0}])
+    client = RedisMemo::Redis::WithReplicas.new([{ db: 0 }])
     expect(client.mapped_mget('a').is_a?(Hash)).to be(true)
   end
 end

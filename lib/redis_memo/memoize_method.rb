@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'batch'
 require_relative 'future'
 require_relative 'memoizable'
@@ -56,11 +57,9 @@ module RedisMemo::MemoizeMethod
     define_method :dependency_of do |method_name, *method_args|
       method_depends_on = self.class.instance_variable_get(:@__redis_memo_method_dependencies)[method_name]
       unless method_depends_on
-        raise(
-          RedisMemo::ArgumentError,
-          "#{method_name} is not a memoized method"
-        )
+        raise RedisMemo::ArgumentError.new("#{method_name} is not a memoized method")
       end
+
       RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *method_args, &method_depends_on)
     end
   end
@@ -151,7 +150,7 @@ module RedisMemo::MemoizeMethod
     # ```
     #  `exclude_anonymous_args(depends_on, ref, [1, 2])` returns [2]
     def exclude_anonymous_args(depends_on, ref, args)
-      return [] if depends_on.parameters.empty? or args.empty?
+      return [] if depends_on.parameters.empty? || args.empty?
 
       positional_args = []
       kwargs = {}
@@ -182,7 +181,7 @@ module RedisMemo::MemoizeMethod
         when :keyrest
           kwargs.merge!(options) if is_named?(param)
         else
-          raise(RedisMemo::ArgumentError, "#{param.first} argument isn't supported in the dependency block")
+          raise RedisMemo::ArgumentError.new("#{param.first} argument isn't supported in the dependency block")
         end
       end
 

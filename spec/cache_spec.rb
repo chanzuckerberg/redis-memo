@@ -80,7 +80,6 @@ describe RedisMemo::Cache do
     expect(obj.count).to be 5
   end
 
-
   it 'does not interrupt on connection pool errors' do
     raise_error_on_redis_calls(::ConnectionPool::TimeoutError)
 
