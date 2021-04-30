@@ -9,7 +9,9 @@ class RedisMemo::Options
     redis_error_handler: nil,
     tracer: nil,
     global_cache_key_version: nil,
-    expires_in: nil
+    expires_in: nil,
+    disable_all: false,
+    disabled_tables: Set.new
   )
     @compress = compress.nil? ? true : compress
     @compress_threshold = compress_threshold || 1.kilobyte
@@ -20,6 +22,7 @@ class RedisMemo::Options
     @logger = logger
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
+    @disable_all = disable_all
   end
 
   def redis
@@ -79,6 +82,7 @@ class RedisMemo::Options
   attr_accessor :connection_pool
   attr_accessor :expires_in
   attr_accessor :redis_error_handler
+  attr_accessor :disable_all
 
   attr_writer :global_cache_key_version
   attr_writer :tracer
