@@ -1,5 +1,4 @@
 # typed: false
-
 describe RedisMemo::Options do
   context 'cache validation' do
     it 'validates the cache result' do
@@ -102,27 +101,10 @@ describe RedisMemo::Options do
 
         expect_no_caching do
           # Check that query caching is disabled on the model
-          5.times { TestModel.find(test_model.id) }
+          TestModel.find(test_model.id)
 
           # Check that invalidation model callbacks are disabled on update and destroy
           expect(RedisMemo::MemoizeQuery).not_to receive(:invalidate)
-          test_model.update!(a: 1)
-          test_model.destroy!
-        end
-      end
-
-      it 'disables query caching if disable cached select flag is set' do
-        RedisMemo::DefaultOptions.disable_cached_select = true
-        TestModel.memoize_table_column :id, editable: false
-
-        test_model = TestModel.create!
-
-        expect_no_caching do
-          # Check that query caching is disabled
-          5.times { TestModel.find(test_model.id) }
-
-          # Check that invalidation model callbacks still are installed on the model
-          expect(RedisMemo::MemoizeQuery).to receive(:invalidate).twice
           test_model.update!(a: 1)
           test_model.destroy!
         end
