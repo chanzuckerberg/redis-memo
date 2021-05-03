@@ -13,7 +13,7 @@ module RedisMemo::MemoizeQuery
   def memoize_table_column(*raw_columns, editable: true)
     RedisMemo::MemoizeQuery.using_active_record!(self)
     return if RedisMemo::DefaultOptions.disable_all
-    return if ENV["REDIS_MEMO_DISABLE_#{self.table_name.upcase}"] == 'true'
+    return if RedisMemo::DefaultOptions.disabled_models.include?(self)
 
     columns = raw_columns.map(&:to_sym).sort
 
@@ -37,7 +37,7 @@ module RedisMemo::MemoizeQuery
       end
     end
 
-    unless ENV["REDIS_MEMO_DISABLE_QUERY_#{self.table_name.upcase}"] == 'true'
+    unless RedisMemo::DefaultOptions.disabled_models.include?(self)
       RedisMemo::MemoizeQuery::CachedSelect.enabled_models[self.table_name] = self
     end
   rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid

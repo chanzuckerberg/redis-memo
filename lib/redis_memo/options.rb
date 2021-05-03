@@ -11,7 +11,7 @@ class RedisMemo::Options
     global_cache_key_version: nil,
     expires_in: nil,
     disable_all: false,
-    disabled_tables: Set.new
+    disabled_models: Set.new
   )
     @compress = compress.nil? ? true : compress
     @compress_threshold = compress_threshold || 1.kilobyte
@@ -23,6 +23,7 @@ class RedisMemo::Options
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
     @disable_all = disable_all
+    @disabled_models = disabled_models
   end
 
   def redis
@@ -74,6 +75,10 @@ class RedisMemo::Options
     end
   end
 
+  def disable_model(model)
+    @disabled_models << model
+  end
+
   attr_accessor :async
   attr_accessor :cache_out_of_date_handler
   attr_accessor :cache_validation_sampler
@@ -83,6 +88,7 @@ class RedisMemo::Options
   attr_accessor :expires_in
   attr_accessor :redis_error_handler
   attr_accessor :disable_all
+  attr_accessor :disabled_models
 
   attr_writer :global_cache_key_version
   attr_writer :tracer
