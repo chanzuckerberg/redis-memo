@@ -23,7 +23,7 @@ module RedisMemo::MemoizeQuery
     RedisMemo::MemoizeQuery::ModelCallback.install(self)
     RedisMemo::MemoizeQuery::Invalidation.install(self)
 
-    if ENV['REDIS_MEMO_DISABLE_CACHED_SELECT'] != 'true'
+    unless RedisMemo::DefaultOptions.disable_cached_select
       RedisMemo::MemoizeQuery::CachedSelect.install(ActiveRecord::Base.connection)
     end
 

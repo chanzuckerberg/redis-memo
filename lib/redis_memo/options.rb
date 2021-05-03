@@ -11,6 +11,7 @@ class RedisMemo::Options
     global_cache_key_version: nil,
     expires_in: nil,
     disable_all: false,
+    disable_cached_select: false,
     disabled_models: Set.new
   )
     @compress = compress.nil? ? true : compress
@@ -23,6 +24,7 @@ class RedisMemo::Options
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
     @disable_all = disable_all
+    @disable_cached_select = disable_cached_select
     @disabled_models = disabled_models
   end
 
@@ -88,6 +90,7 @@ class RedisMemo::Options
   attr_accessor :expires_in
   attr_accessor :redis_error_handler
   attr_accessor :disable_all
+  attr_accessor :disable_cached_select
   attr_accessor :disabled_models
 
   attr_writer :global_cache_key_version
