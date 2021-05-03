@@ -10,6 +10,7 @@ class RedisMemo::Options
     tracer: nil,
     global_cache_key_version: nil,
     expires_in: nil,
+    max_connection_attempts: nil,
     disable_all: false,
     disable_cached_select: false,
     disabled_models: Set.new
@@ -23,6 +24,7 @@ class RedisMemo::Options
     @logger = logger
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
+    @max_connection_attempts = max_connection_attempts
     @disable_all = disable_all
     @disable_cached_select = disable_cached_select
     @disabled_models = disabled_models
@@ -88,6 +90,7 @@ class RedisMemo::Options
   attr_accessor :compress_threshold
   attr_accessor :connection_pool
   attr_accessor :expires_in
+  attr_accessor :max_connection_attempts
   attr_accessor :redis_error_handler
   attr_accessor :disable_all
   attr_accessor :disable_cached_select
