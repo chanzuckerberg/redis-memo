@@ -40,8 +40,8 @@ describe RedisMemo::Options do
 
   context 'disable caching options' do
     # Reset options to default values after each test
-    after(:each) do
-      Kernel::silence_warnings { RedisMemo::DefaultOptions = RedisMemo::Options.new }
+    before(:each) do
+      stub_const("RedisMemo::DefaultOptions", RedisMemo::Options.new)
     end
 
     def expect_no_caching
