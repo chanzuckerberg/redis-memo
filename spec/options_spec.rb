@@ -4,7 +4,7 @@ describe RedisMemo::Options do
 
   # Reset options to default values after each test
   after(:each) do
-    RedisMemo::DefaultOptions = RedisMemo::Options.new
+    Kernel::silence_warnings { RedisMemo::DefaultOptions = RedisMemo::Options.new }
   end
 
   it 'validates the cache result' do
@@ -60,5 +60,70 @@ describe RedisMemo::Options do
     expect {
       5.times { obj.calc }
     }.to change { obj.count }.by(5)
+  end
+
+  context 'query caching' do
+
+    before(:all) do
+      ActiveRecord::Base.connection.execute 'drop table if exists test_models'
+      ActiveRecord::Base.connection.create_table :test_models do |t|
+        t.integer 'a', default: 0
+      end
+    end
+
+    after(:all) do
+      ActiveRecord::Base.connection.execute 'drop table if exists test_models'
+    end
+
+    # Set and unset the TestModel constant to reload the model definition
+    let(:test_model_klass) { Class.new(ActiveRecord::Base) { extend RedisMemo::MemoizeQuery } }
+
+    before(:each) do
+      Object.const_set("TestModel", test_model_klass)
+    end
+
+    after(:each) do
+      Object.send(:remove_const, "TestModel")
+    end
+
+    def expect_no_caching
+      expect(RedisMemo::Cache).to_not receive(:read_multi)
+      yield
+    end
+
+    it 'disables query caching on tables that are disabled' do
+      # Reload the model and call memoize_table_column after options are set
+      RedisMemo::DefaultOptions.disable_model(TestModel)
+      TestModel.memoize_table_column :id, editable: false
+
+      test_model = TestModel.create!
+
+      expect_no_caching do
+        # Check that query caching is disabled on the model
+        5.times { TestModel.find(test_model.id) }
+
+        # Check that invalidation model callbacks are disabled on update and destroy
+        expect(RedisMemo::MemoizeQuery).not_to receive(:invalidate)
+        test_model.update!(a: 1)
+        test_model.destroy!
+      end
+    end
+
+    it 'disables query caching if disable cached select flag is set' do
+      RedisMemo::DefaultOptions.disable_cached_select = true
+      TestModel.memoize_table_column :id, editable: false
+
+      test_model = TestModel.create!
+
+      expect_no_caching do
+        # Check that query caching is disabled
+        5.times { TestModel.find(test_model.id) }
+
+        # Check that invalidation model callbacks still are installed on the model
+        expect(RedisMemo::MemoizeQuery).to receive(:invalidate).twice
+        test_model.update!(a: 1)
+        test_model.destroy!
+      end
+    end
   end
 end
