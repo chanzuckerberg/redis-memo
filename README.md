@@ -14,7 +14,7 @@ gem 'redis-memo'
 ```
 ## Usage
 ### Cache simple ActiveRecord queries
-Add two lines to the `User` model:
+In the `User` model:
 ```ruby
 class User < ApplicationRecord
   extend RedisMemo::MemoizeQuery
@@ -24,7 +24,7 @@ end
 
 `SELECT "users".* FROM "users" WHERE "users"."id" = $1` queries will **load the data from Redis** instead of the database:
 ```
-[1] pry(main)> Post.last.author
+[1] (rails console)> Post.last.author
   Post Load (0.5ms)  SELECT "posts".* FROM "posts" ORDER BY "posts"."id" DESC LIMIT $1
 [Redis] User Load SELECT "users".* FROM "users" WHERE "users"."id" = $1 LIMIT $2
 [Redis] command=MGET args="RedisMemo::Memoizable:wBHc40/aONKsqhl6C51RyF2RhRM=" "RedisMemo::Memoizable:fMu973somRtsGSPlWfQjq0F8yh0=" "RedisMemo::Memoizable:xjlaWFZ6PPfdd8hCQ2OjJi6i0hw="
@@ -124,4 +124,4 @@ For each `load` call, the cached result on Redis will be used until its dependen
 ## Related Work
 We’re aware of [Shopify/identity_cache](https://github.com/Shopify/identity_cache), a gem that provides query caching with automatic cache invalidation; however, it is affected by most of the other issues we want to address when caching queries at the application-level. You can learn more about the challenges with using the Rails low-level caching API or other caching technologies such as IdentityCache [here](https://github.com/chanzuckerberg/redis-memo/wiki).
 
-IdentityCache documented the motivation for providing separate cached query code paths in its [caveats](https://github.com/Shopify/identity_cache#caveats). With RedisMemo, caching is still a deliberate decision: there are models and computations that would not benefit from caching. When caching does make sense, RedisMemo makes caching easy and robust.
+IdentityCache is [deliberately opt-in](https://github.com/Shopify/identity_cache#caveats) for all call sites that want to use caching. In comparison, RedisMemo is still deliberate in that clients should specify what computation and models should be cached. However, when caching does make sense, RedisMemo makes caching easy and robust by automatically using the cached code paths.
