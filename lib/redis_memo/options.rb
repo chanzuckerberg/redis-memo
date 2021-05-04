@@ -24,9 +24,9 @@ class RedisMemo::Options
     @logger = logger
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
-    @max_connection_attempts = max_connection_attempts
-    @disable_all = disable_all
-    @disable_cached_select = disable_cached_select
+    @max_connection_attempts = ENV['REDIS_MEMO_MAX_ATTEMPTS_PER_REQUEST']&.to_i || max_connection_attempts
+    @disable_all = ENV['REDIS_MEMO_DISABLE_ALL'] == 'true' || disable_all
+    @disable_cached_select = ENV['REDIS_MEMO_DISABLE_CACHED_SELECT'] == 'true' || disable_cached_select
     @disabled_models = disabled_models
   end
 
@@ -83,6 +83,10 @@ class RedisMemo::Options
     @disabled_models << model
   end
 
+  def model_disabled_for_caching?(model)
+    ENV["REDIS_MEMO_DISABLE_#{model.table_name.upcase}"] == 'true' || @disabled_models.include?(model)
+  end
+
   attr_accessor :async
   attr_accessor :cache_out_of_date_handler
   attr_accessor :cache_validation_sampler
@@ -94,7 +98,6 @@ class RedisMemo::Options
   attr_accessor :redis_error_handler
   attr_accessor :disable_all
   attr_accessor :disable_cached_select
-  attr_accessor :disabled_models
 
   attr_writer :global_cache_key_version
   attr_writer :tracer
