@@ -5,13 +5,8 @@
 # to be more robust when testing their code that uses redis-memo.
 module RedisMemo
   class Testing
-
-    def self.__test_mode
-      @__test_mode
-    end
-
-    def self.__test_mode=(mode)
-      @__test_mode = mode
+    class << self
+      attr_accessor :__test_mode
     end
 
     def self.enable_test_mode(&blk)
@@ -25,8 +20,6 @@ module RedisMemo
     def self.enabled?
       __test_mode
     end
-
-    private
 
     def self.__set_test_mode(mode, &blk)
       if blk.nil?
@@ -48,6 +41,7 @@ module RedisMemo
       if RedisMemo::Testing.enabled? && !RedisMemo::Memoizable::Invalidation.class_variable_get(:@@invalidation_queue).empty?
         return true
       end
+
       super
     end
   end

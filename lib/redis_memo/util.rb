@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 module RedisMemo::Util
   def self.checksum(serialized)
     Digest::SHA1.base64digest(serialized)

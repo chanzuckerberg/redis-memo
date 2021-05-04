@@ -3,8 +3,8 @@
 describe RedisMemo::Memoizable::Invalidation do
   context 'with a DAG' do
     module RedisMemoSpecDAG
-        # a ->   b   ->  d
-        #   \->  c   /
+      # a ->   b   ->  d
+      #   \->  c   /
       def self.a(val)
         RedisMemo::Memoizable.new(id: :a, val: val)
       end
@@ -37,7 +37,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
           attr_accessor :calc_count
 
-          def calc(x)
+          def calc(_x)
             @calc_count += 1
           end
 
@@ -62,7 +62,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
         attr_accessor :calc_count
 
-        def calc(x)
+        def calc(_x)
           @calc_count += 1
         end
 
@@ -102,7 +102,7 @@ describe RedisMemo::Memoizable::Invalidation do
     context 'with dependencies of other methods' do
       klass = Class.new do
         extend RedisMemo::MemoizeMethod
-  
+
         attr_accessor :calc_count
         attr_reader :id
 
@@ -110,11 +110,11 @@ describe RedisMemo::Memoizable::Invalidation do
           @id = id
         end
 
-        def calc(x)
+        def calc(_x)
           @calc_count += 1
         end
-  
-        def calc_b_c(x)
+
+        def calc_b_c(_x)
           @calc_count += 1
         end
 
@@ -139,7 +139,7 @@ describe RedisMemo::Memoizable::Invalidation do
           RedisMemoSpecDAG.b(val),
           RedisMemoSpecDAG.c(val),
           RedisMemo::Memoizable.new(id: obj.id, val: val),
-          RedisMemo::Memoizable.new(val: val)
+          RedisMemo::Memoizable.new(val: val),
         ].each do |memo|
           expect {
             RedisMemo::Memoizable.invalidate([memo])
@@ -161,12 +161,12 @@ describe RedisMemo::Memoizable::Invalidation do
       klass = Class.new do
         extend RedisMemo::MemoizeMethod
       end
-      let (:obj) { obj = klass.new }
+      let(:obj) { obj = klass.new }
 
-      def add_test_case(named_args, &blk)
+      def add_test_case(named_args)
         # Expect dependencies to only get extracted once
         expect(RedisMemo::MemoizeMethod).to receive(:extract_dependencies).once.and_call_original
-        blk.call
+        yield
 
         # Expect that the mapped args are correct
         depends_on = obj.singleton_class.instance_variable_get(:@__redis_memo_method_dependencies)[:test]
@@ -183,7 +183,7 @@ describe RedisMemo::Memoizable::Invalidation do
         end
         RedisMemo::Cache.with_local_cache do
           add_test_case([2, 3, 5]) { 5.times { obj.test(1, 2, 3, 4, 5) } }
-          add_test_case([2, 3, 5, {b: 1}]) { 5.times { obj.test(1, 2, 3, 4, 5, b: 1) } }
+          add_test_case([2, 3, 5, { b: 1 }]) { 5.times { obj.test(1, 2, 3, 4, 5, b: 1) } }
         end
       end
 
@@ -192,8 +192,8 @@ describe RedisMemo::Memoizable::Invalidation do
           memoize_method :test do |_, *args, a:, b:, **kwargs|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case([1, 2, 3, {a: 4, b: 5, c: 6, d: 6}]) { 5.times { obj.test(1, 2, 3, a: 4, b: 5, c: 6, d: 6) } }
-          add_test_case([1, 2, 3, {a: 5, b: 6, c: 5}]) { 5.times { obj.test(1, 2, 3, a: 5, c: 5, b: 6) } }
+          add_test_case([1, 2, 3, { a: 4, b: 5, c: 6, d: 6 }]) { 5.times { obj.test(1, 2, 3, a: 4, b: 5, c: 6, d: 6) } }
+          add_test_case([1, 2, 3, { a: 5, b: 6, c: 5 }]) { 5.times { obj.test(1, 2, 3, a: 5, c: 5, b: 6) } }
         end
       end
 
@@ -202,12 +202,13 @@ describe RedisMemo::Memoizable::Invalidation do
           memoize_method :test do |_, a, b, *, c, d:, **|; end
         end
         RedisMemo::Cache.with_local_cache do
-          add_test_case([1, 1, 1, {d: 3}]) do
+          add_test_case([1, 1, 1, { d: 3 }]) do
             5.times { obj.test(1, 1, 2, 3, 1, d: 3) }
             5.times { obj.test(1, 1, 3, 4, 5, 1, d: 3, e: 3) }
           end
         end
       end
+
       it 'raises an error when a block is a parameter in the dependency block' do
         obj.class_eval do
           memoize_method :test do |_, *, **, &blk|; end
@@ -225,6 +226,7 @@ describe RedisMemo::Memoizable::Invalidation do
         extend RedisMemo::MemoizeMethod
 
         def non_memoized_method(x); end
+
         def calc(x); end
 
         memoize_method :calc do |obj, x|
@@ -243,7 +245,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
         def calc(x); end
 
-        memoize_method :calc do |obj, x|
+        memoize_method :calc do |_obj, _x|
           depends_on Class.new
         end
       end
@@ -404,6 +406,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
         memoize_method :calc_2 do |record, without_memoization|
           raise RedisMemo::WithoutMemoization if without_memoization
+
           depends_on SpecModel.where(a: record.a)
         end
       end

@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'cache'
 require_relative 'tracer'
 
@@ -36,9 +37,9 @@ class RedisMemo::Future
       RedisMemo::MemoizeMethod.method_cache_keys([context])&.first || ''
   end
 
-  def execute(cached_results=nil)
+  def execute(cached_results = nil)
     if RedisMemo::Batch.current
-      raise RedisMemo::RuntimeError, 'Cannot execute future when a batch is still open'
+      raise RedisMemo::RuntimeError.new('Cannot execute future when a batch is still open')
     end
 
     if cache_hit?(cached_results)
@@ -64,7 +65,7 @@ class RedisMemo::Future
 
   def result
     unless @computed_cached_result
-      raise RedisMemo::RuntimeError, 'Future has not been executed'
+      raise RedisMemo::RuntimeError.new('Future has not been executed')
     end
 
     @fresh_result || @cached_result
@@ -72,13 +73,13 @@ class RedisMemo::Future
 
   private
 
-  def cache_hit?(cached_results=nil)
+  def cache_hit?(cached_results = nil)
     cached_result(cached_results)
 
     @cache_hit
   end
 
-  def cached_result(cached_results=nil)
+  def cached_result(cached_results = nil)
     return @cached_result if @computed_cached_result
 
     @cache_hit = false
@@ -114,7 +115,7 @@ class RedisMemo::Future
             # result)
             @cache_hit && @cached_result != @fresh_result
           )
-      )
+        )
         RedisMemo::Cache.write(method_cache_key, @fresh_result, **@cache_options)
       end
     end

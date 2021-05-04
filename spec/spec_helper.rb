@@ -15,11 +15,11 @@ RSpec.configure do |config|
 
   config.before(:all) do
     ActiveRecord::Base.establish_connection(
-      :adapter  => ENV['RSPEC_DB_ADAPTER'] || 'postgresql',
-      :host     => 'localhost',
-      :username => ENV['RSPEC_DB_USERNAME'] || 'postgres',
-      :password => ENV['RSPEC_DB_PASSWORD'] || '',
-      :database => 'redis_memo_test',
+      adapter: ENV['RSPEC_DB_ADAPTER'] || 'postgresql',
+      host: 'localhost',
+      username: ENV['RSPEC_DB_USERNAME'] || 'postgres',
+      password: ENV['RSPEC_DB_PASSWORD'] || '',
+      database: 'redis_memo_test',
     )
   end
 
