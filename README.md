@@ -49,7 +49,7 @@ class Post < ApplicationRecord
   end
 end
 ```
-Note calling `Post.where(id: post.id)` does not trigger any database queries -- it's just an [ActiveRecord Relation](https://api.rubyonrails.org/v6.1.3.1/classes/ActiveRecord/Relation.html) representing the SQL query.
+* Note that calling `Post.where(id: post.id)` does not trigger any database queries -- it's just an [ActiveRecord Relation](https://api.rubyonrails.org/v6.1.3.1/classes/ActiveRecord/Relation.html) representing the SQL query.
 
 In order to use `depends_on` to extract dependencies from a Relation, we need to memoize the referenced table columns on the `Post` and `User` model:
 ```ruby
