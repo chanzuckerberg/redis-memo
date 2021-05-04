@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 class RedisMemo::Railtie < Rails::Railtie
   initializer 'request_store.insert_middleware' do |app|
     if ActionDispatch.const_defined? :RequestId

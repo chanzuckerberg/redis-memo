@@ -24,11 +24,12 @@ describe RedisMemo::AfterCommit do
         @calc_count += 1
       end
 
-      memoize_method :calc do |arg|
+      memoize_method :calc do |_arg|
         depends_on _memo
       end
     end
   end
+  let!(:obj) { klass.new }
 
   let!(:redis_stats) do
     {
@@ -54,8 +55,6 @@ describe RedisMemo::AfterCommit do
       method.call(*args)
     end
   end
-
-  let!(:obj) { klass.new }
 
   def calc(x)
     x.times { obj.calc }
@@ -93,7 +92,7 @@ describe RedisMemo::AfterCommit do
     if use_local_cache
       with_local_cache(&blk)
     else
-      blk.call
+      yield
     end
   end
 

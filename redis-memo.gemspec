@@ -15,8 +15,8 @@ Gem::Specification.new do |s|
   s.required_ruby_version = ['>= 2.5.0']
 
   s.add_dependency 'activesupport', '>= 5.2'
-  s.add_dependency 'redis', '>= 4.0.1'
   s.add_dependency 'connection_pool', '>= 2.2.3'
+  s.add_dependency 'redis', '>= 4.0.1'
 
   s.add_development_dependency 'activerecord', '>= 5.2'
   s.add_development_dependency 'activerecord-import'
@@ -26,5 +26,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'railties', '>= 5.2'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'rspec', '~> 3.2'
+  s.add_development_dependency 'rubocop'
+  s.add_development_dependency 'rubocop-performance'
+  s.add_development_dependency 'rubocop-rspec'
   s.add_development_dependency 'simplecov'
 end

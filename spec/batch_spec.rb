@@ -9,7 +9,7 @@ describe RedisMemo::Batch do
         x
       end
 
-      memoize_method :cached_query do |_, x|
+      memoize_method :cached_query do |_, _x|
         depends_on memo
       end
 

@@ -71,7 +71,7 @@ describe RedisMemo::MemoizeMethod do
 
       attr_accessor :calc_count
 
-      def calc(x)
+      def calc(_x)
         @calc_count += 1
         raise 'error'
       end

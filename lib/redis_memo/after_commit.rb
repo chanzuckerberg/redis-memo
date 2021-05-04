@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 # TODO: -> RedisMemo::Memoizable::AfterCommit
 
 class RedisMemo::AfterCommit
@@ -34,8 +35,6 @@ class RedisMemo::AfterCommit
     connection.transaction_open? && connection.current_transaction.joinable?
   end
 
-  private
-
   def self.after_commit(&blk)
     connection.add_transaction_record(
       RedisMemo::AfterCommit::Callback.new(connection, committed: blk),
@@ -50,6 +49,7 @@ class RedisMemo::AfterCommit
 
   def self.reset_after_transaction
     return if @@callback_added
+
     @@callback_added = true
 
     after_commit do

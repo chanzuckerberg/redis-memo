@@ -1,9 +1,8 @@
 require 'redis_memo/testing'
 
 describe RedisMemo::Testing do
-  let(:klass) {
+  let(:klass) do
     Class.new do
-
       def self.test; end
 
       class << self
@@ -11,7 +10,7 @@ describe RedisMemo::Testing do
         memoize_method :test
       end
     end
-  }
+  end
 
   def expect_no_caching
     expect(RedisMemo::Cache).to_not receive(:read_multi)
@@ -45,7 +44,7 @@ describe RedisMemo::Testing do
 
   context 'when not set globally' do
     RedisMemo::Memoizable::Invalidation.class_variable_get(:@@invalidation_queue) << RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil)
-    
+
     it 'is only enabled for the given block' do
       expect_caching { klass.test }
       expect_no_caching do
@@ -55,5 +54,4 @@ describe RedisMemo::Testing do
       end
     end
   end
-
 end

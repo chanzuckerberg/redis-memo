@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative 'memoize_method'
 
 # Hook into ActiveRecord to cache SQL queries and perform auto cache
@@ -29,16 +30,13 @@ module RedisMemo::MemoizeQuery
 
     # The code below might fail due to missing DB/table errors
     columns.each do |column|
-      unless self.columns_hash.include?(column.to_s)
-        raise(
-          RedisMemo::ArgumentError,
-          "'#{self.name}' does not contain column '#{column}'",
-        )
-      end
+      next if columns_hash.include?(column.to_s)
+
+      raise RedisMemo::ArgumentError.new("'#{name}' does not contain column '#{column}'")
     end
 
     unless RedisMemo::DefaultOptions.model_disabled_for_caching?(self)
-      RedisMemo::MemoizeQuery::CachedSelect.enabled_models[self.table_name] = self
+      RedisMemo::MemoizeQuery::CachedSelect.enabled_models[table_name] = self
     end
   rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid
     # no-opts: models with memoize_table_column decleared might be loaded in
@@ -47,7 +45,7 @@ module RedisMemo::MemoizeQuery
 
   def self.using_active_record!(model_class)
     unless using_active_record?(model_class)
-      raise RedisMemo::ArgumentError, "'#{model_class.name}' does not use ActiveRecord"
+      raise RedisMemo::ArgumentError.new("'#{model_class.name}' does not use ActiveRecord")
     end
   end
 
@@ -68,10 +66,7 @@ module RedisMemo::MemoizeQuery
 
     keys = extra_props.keys.sort
     if !keys.empty? && !memoized_columns(model_class).include?(keys)
-      raise(
-        RedisMemo::ArgumentError,
-        "'#{model_class.name}' has not memoized columns: #{keys}",
-      )
+      raise RedisMemo::ArgumentError.new("'#{model_class.name}' has not memoized columns: #{keys}")
     end
 
     extra_props.each do |key, value|

@@ -112,7 +112,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
       memoize_method(
         :exec_query,
-        method_id: proc do |_, sql, *args|
+        method_id: proc do |_, sql, *_args|
           sql.gsub(/(\$\d+)/, '?')      # $1 -> ?
              .gsub(/((, *)*\?)+/, '?')  # (?, ?, ? ...) -> (?)
         end,
@@ -128,7 +128,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
               # In activerecord >= 6, a bind could be an actual database value
               bind
             end
-          end
+          end,
         )
       end
     end
@@ -204,8 +204,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
     RedisMemo::ThreadLocalVar.substitues = prev_substitutes
     RedisMemo::ThreadLocalVar.arel_bind_params = prev_bind_params
   end
-
-  private
 
   # A pre-order Depth First Search
   #
@@ -286,7 +284,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
           return if core.wheres.empty? || binding_relation.nil?
         when Arel::Nodes::TableAlias
           bind_params = bind_params.union(
-            extract_bind_params_recurse(source_node.left)
+            extract_bind_params_recurse(source_node.left),
           )
 
           return unless bind_params
@@ -297,7 +295,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
         # Binds wheres before havings
         core.wheres.each do |where|
           bind_params = bind_params.union(
-            extract_bind_params_recurse(where)
+            extract_bind_params_recurse(where),
           )
 
           return unless bind_params
@@ -305,7 +303,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
         core.havings.each do |having|
           bind_params = bind_params.union(
-            extract_bind_params_recurse(having)
+            extract_bind_params_recurse(having),
           )
 
           return unless bind_params
@@ -320,11 +318,11 @@ class RedisMemo::MemoizeQuery::CachedSelect
       # Inline SQL
       extract_bind_params_recurse(node.expr)
     when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
-      return bind_params 
+      bind_params
     when Arel::Nodes::And
       node.children.each do |child|
         bind_params = bind_params.product(
-          extract_bind_params_recurse(child)
+          extract_bind_params_recurse(child),
         )
 
         return unless bind_params
@@ -334,7 +332,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
     when Arel::Nodes::Union, Arel::Nodes::Or
       [node.left, node.right].each do |child|
         bind_params = bind_params.union(
-          extract_bind_params_recurse(child)
+          extract_bind_params_recurse(child),
         )
 
         return unless bind_params
@@ -343,7 +341,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       bind_params
     else
       # Not yet supported
-      return
+      nil
     end
   end
 

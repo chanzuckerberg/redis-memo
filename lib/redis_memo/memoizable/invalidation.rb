@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative '../after_commit'
 require_relative '../cache'
 
@@ -127,10 +128,10 @@ module RedisMemo::Memoizable::Invalidation
       begin
         bump_version(task)
       rescue SignalException, Redis::BaseConnectionError,
-        ::ConnectionPool::TimeoutError => e
+             ::ConnectionPool::TimeoutError => error
 
-        RedisMemo::DefaultOptions.redis_error_handler&.call(e, __method__)
-        RedisMemo::DefaultOptions.logger&.warn(e.full_message)
+        RedisMemo::DefaultOptions.redis_error_handler&.call(error, __method__)
+        RedisMemo::DefaultOptions.logger&.warn(error.full_message)
         retry_queue << task
       end
     end
