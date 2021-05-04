@@ -13,8 +13,8 @@ module RedisMemo::MemoizeQuery
   # after each record save
   def memoize_table_column(*raw_columns, editable: true)
     RedisMemo::MemoizeQuery.using_active_record!(self)
-    return if ENV['REDIS_MEMO_DISABLE_ALL'] == 'true'
-    return if ENV["REDIS_MEMO_DISABLE_#{table_name.upcase}"] == 'true'
+    return if RedisMemo::DefaultOptions.disable_all
+    return if RedisMemo::DefaultOptions.model_disabled_for_caching?(self)
 
     columns = raw_columns.map(&:to_sym).sort
 
@@ -24,7 +24,7 @@ module RedisMemo::MemoizeQuery
     RedisMemo::MemoizeQuery::ModelCallback.install(self)
     RedisMemo::MemoizeQuery::Invalidation.install(self)
 
-    if ENV['REDIS_MEMO_DISABLE_CACHED_SELECT'] != 'true'
+    unless RedisMemo::DefaultOptions.disable_cached_select
       RedisMemo::MemoizeQuery::CachedSelect.install(ActiveRecord::Base.connection)
     end
 
@@ -35,7 +35,7 @@ module RedisMemo::MemoizeQuery
       raise RedisMemo::ArgumentError.new("'#{name}' does not contain column '#{column}'")
     end
 
-    unless ENV["REDIS_MEMO_DISABLE_QUERY_#{table_name.upcase}"] == 'true'
+    unless RedisMemo::DefaultOptions.model_disabled_for_caching?(self)
       RedisMemo::MemoizeQuery::CachedSelect.enabled_models[table_name] = self
     end
   rescue ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid

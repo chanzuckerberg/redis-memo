@@ -66,7 +66,7 @@ module RedisMemo
   #
   # @return [Boolean]
   def self.without_memo?
-    ENV['REDIS_MEMO_DISABLE_ALL'] == 'true' || ThreadLocalVar.without_memo == true
+    RedisMemo::DefaultOptions.disable_all || ThreadLocalVar.without_memo == true
   end
 
   # Configure the wrapped code in the block to skip memoization.

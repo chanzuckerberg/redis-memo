@@ -9,7 +9,11 @@ class RedisMemo::Options
     redis_error_handler: nil,
     tracer: nil,
     global_cache_key_version: nil,
-    expires_in: nil
+    expires_in: nil,
+    max_connection_attempts: nil,
+    disable_all: false,
+    disable_cached_select: false,
+    disabled_models: Set.new
   )
     @compress = compress.nil? ? true : compress
     @compress_threshold = compress_threshold || 1.kilobyte
@@ -20,6 +24,10 @@ class RedisMemo::Options
     @logger = logger
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
+    @max_connection_attempts = ENV['REDIS_MEMO_MAX_ATTEMPTS_PER_REQUEST']&.to_i || max_connection_attempts
+    @disable_all = ENV['REDIS_MEMO_DISABLE_ALL'] == 'true' || disable_all
+    @disable_cached_select = ENV['REDIS_MEMO_DISABLE_CACHED_SELECT'] == 'true' || disable_cached_select
+    @disabled_models = disabled_models
   end
 
   def redis
@@ -71,6 +79,14 @@ class RedisMemo::Options
     end
   end
 
+  def disable_model(model)
+    @disabled_models << model
+  end
+
+  def model_disabled_for_caching?(model)
+    ENV["REDIS_MEMO_DISABLE_#{model.table_name.upcase}"] == 'true' || @disabled_models.include?(model)
+  end
+
   attr_accessor :async
   attr_accessor :cache_out_of_date_handler
   attr_accessor :cache_validation_sampler
@@ -78,7 +94,10 @@ class RedisMemo::Options
   attr_accessor :compress_threshold
   attr_accessor :connection_pool
   attr_accessor :expires_in
+  attr_accessor :max_connection_attempts
   attr_accessor :redis_error_handler
+  attr_accessor :disable_all
+  attr_accessor :disable_cached_select
 
   attr_writer :global_cache_key_version
   attr_writer :tracer
