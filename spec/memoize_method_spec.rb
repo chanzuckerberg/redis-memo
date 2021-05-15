@@ -112,6 +112,123 @@ describe RedisMemo::MemoizeMethod do
     expect(obj.calc).to be 2
   end
 
+  context 'validates the results according to the validation sample rate' do
+    it 'validates the results according if the percentage is 100' do
+      count = 0
+
+      allow(RedisMemo::DefaultOptions).to receive(:cache_out_of_date_handler) do
+        proc { count += 1 }
+      end
+
+      klass = Class.new do
+        extend RedisMemo::MemoizeMethod
+
+        attr_accessor :calc_count
+
+        def calc
+          @calc_count += 1
+        end
+
+        memoize_method :calc, cache_validation_sample_percentage: 100
+      end
+
+      obj = klass.new
+      obj.calc_count = 0
+
+      expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
+
+      # cache miss
+      expect {
+        obj.calc
+      }.to change { count }.by(0)
+
+      # cache hit
+      expect {
+        obj.calc
+      }.to change { count }.by(1)
+    end
+
+    context 'cache validation percentage is between 0 and 100' do
+      it 'caches the result if Rand generates a number lower than the percentage' do
+        count = 0
+
+        allow(RedisMemo::DefaultOptions).to receive(:cache_out_of_date_handler) do
+          proc { count += 1 }
+        end
+
+        klass = Class.new do
+          extend RedisMemo::MemoizeMethod
+
+          attr_accessor :calc_count
+
+          def calc
+            @calc_count += 1
+          end
+
+          memoize_method :calc, cache_validation_sample_percentage: 60
+        end
+
+        obj = klass.new
+        obj.calc_count = 0
+
+        # If the cache_validation_sample_percentage is 60, and Random generates a value of 50
+        # then it will validate the result
+        expect(Random).to receive(:rand).and_return(50)
+
+        expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
+
+        # cache miss
+        expect {
+          obj.calc
+        }.to change { count }.by(0)
+
+        # cache hit
+        expect {
+          obj.calc
+        }.to change { count }.by(1)
+      end
+
+      it 'caches the result if Rand generates a number higher than the percentage' do
+        count = 0
+
+        allow(RedisMemo::DefaultOptions).to receive(:cache_out_of_date_handler) do
+          proc { count += 1 }
+        end
+
+        klass = Class.new do
+          extend RedisMemo::MemoizeMethod
+
+          attr_accessor :calc_count
+
+          def calc
+            @calc_count += 1
+          end
+
+          memoize_method :calc, cache_validation_sample_percentage: 60
+        end
+
+        obj = klass.new
+        obj.calc_count = 0
+
+        # If the cache_validation_sample_percentage is 60, and Random generates a value of 70
+        # then it will validate the result
+        expect(Random).to receive(:rand).and_return(70)
+
+        expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
+
+        # cache miss
+        expect {
+          obj.calc
+        }.to change { count }.by(0)
+
+        # cache hit
+        expect {
+          obj.calc
+        }.to change { count }.by(0)
+      end
+    end
+  end
+
   it 'expires by ttl dynamically' do
     klass = Class.new do
       extend RedisMemo::MemoizeMethod
