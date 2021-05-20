@@ -115,7 +115,7 @@ Style/EmptyCaseCondition:
   Enabled: true
 
 Style/EmptyElse:
-  Enabled: true
+  Enabled: false
 
 Style/EmptyLambdaParameter:
   Enabled: true
