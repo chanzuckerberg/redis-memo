@@ -2,7 +2,7 @@ Style/AccessModifierDeclarations:
   Enabled: true
 
 Style/Alias:
-  Enabled: true
+  Enabled: false
 
 Style/AndOr:
   Enabled: true
