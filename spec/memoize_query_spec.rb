@@ -96,13 +96,13 @@ describe RedisMemo::MemoizeQuery do
 
   def expect_mget_count(count)
     result = nil
-    expect { result = yield }.to change { @mget_count }.by(count)
+    expect { result = yield }.to change { @mget_count }.by(count) # rubocop: disable RSpec/InstanceVariable
     result
   end
 
   def expect_mget_count_at_least(count)
     result = nil
-    expect { result = yield }.to change { @mget_count }.by_at_least(count)
+    expect { result = yield }.to change { @mget_count }.by_at_least(count) # rubocop: disable RSpec/InstanceVariable
     result
   end
 
