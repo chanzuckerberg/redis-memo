@@ -53,7 +53,7 @@ class RedisMemo::Memoizable::Dependency
 
     # Extract the dependent memos of an Arel without calling exec_query to actually execute the query
     RedisMemo::MemoizeQuery::CachedSelect.with_new_query_context do
-      query, binds, = connection.send(:to_sql_and_binds, relation.arel)
+      query, binds, = connection.__send__(:to_sql_and_binds, relation.arel)
       RedisMemo::MemoizeQuery::CachedSelect.current_query = relation.arel
       is_query_cached = RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(query)
 

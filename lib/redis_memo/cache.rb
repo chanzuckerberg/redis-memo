@@ -20,7 +20,9 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
     RedisMemo::DefaultOptions.redis_error_handler&.call(exception, method)
     RedisMemo::DefaultOptions.logger&.warn(exception.full_message)
 
-    RedisMemo.send(:incr_connection_attempts) if exception.is_a?(Redis::BaseConnectionError)
+    if exception.is_a?(Redis::BaseConnectionError)
+      RedisMemo.__send__(:incr_connection_attempts)
+    end
 
     if RedisMemo::ThreadLocalVar.raise_error
       raise RedisMemo::Cache::Rescuable

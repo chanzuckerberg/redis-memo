@@ -15,7 +15,7 @@ module RedisMemo::MemoizeMethod
     alias_method method_name_without_memo, method_name
 
     define_method method_name_with_memo do |*args|
-      return send(method_name_without_memo, *args) if RedisMemo.without_memo?
+      return __send__(method_name_without_memo, *args) if RedisMemo.without_memo?
 
       dependent_memos = nil
       if depends_on
@@ -46,7 +46,7 @@ module RedisMemo::MemoizeMethod
 
       future.execute
     rescue RedisMemo::WithoutMemoization
-      send(method_name_without_memo, *args)
+      __send__(method_name_without_memo, *args)
     end
 
     alias_method method_name, method_name_with_memo

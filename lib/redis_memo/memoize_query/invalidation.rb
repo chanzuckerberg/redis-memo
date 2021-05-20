@@ -21,7 +21,7 @@ class RedisMemo::MemoizeQuery::Invalidation
         alias_method :"without_redis_memo_invalidation_#{method_name}", method_name
 
         define_method method_name do |*args|
-          result = send(:"without_redis_memo_invalidation_#{method_name}", *args)
+          result = __send__(:"without_redis_memo_invalidation_#{method_name}", *args)
 
           RedisMemo::MemoizeQuery.invalidate(self)
 
@@ -125,14 +125,14 @@ class RedisMemo::MemoizeQuery::Invalidation
   #
   def self.rewrite_default_method(model_class, klass, method_name, class_method:)
     methods = class_method ? :methods : :instance_methods
-    return unless klass.send(methods).include?(method_name)
+    return unless klass.__send__(methods).include?(method_name)
 
     klass = klass.singleton_class if class_method
     klass.class_eval do
       alias_method :"#{method_name}_without_redis_memo_invalidation", method_name
 
       define_method method_name do |*args|
-        result = send(:"#{method_name}_without_redis_memo_invalidation", *args)
+        result = __send__(:"#{method_name}_without_redis_memo_invalidation", *args)
         RedisMemo::MemoizeQuery.invalidate_all(model_class)
         result
       end
@@ -147,7 +147,7 @@ class RedisMemo::MemoizeQuery::Invalidation
 
       define_method method_name do |*args, &blk|
         RedisMemo::MemoizeQuery::Invalidation.invalidate_new_records(model_class) do
-          send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
+          __send__(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
       end
     end
@@ -167,7 +167,7 @@ class RedisMemo::MemoizeQuery::Invalidation
           # HEAD (6.1.3)
           conflict_target: nil,
         ) do
-          send(
+          __send__(
             :"#{method_name}_without_redis_memo_invalidation",
             attributes,
             unique_by: unique_by,
@@ -214,7 +214,7 @@ class RedisMemo::MemoizeQuery::Invalidation
           records: records,
           conflict_target: conflict_target,
         ) do
-          send(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
+          __send__(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
       end
     end
@@ -226,7 +226,7 @@ class RedisMemo::MemoizeQuery::Invalidation
     records.each do |record|
       conditions = {}
       conflict_target.each do |column|
-        conditions[column] = record.send(column)
+        conditions[column] = record.__send__(column)
       end
       if or_chain
         or_chain = or_chain.or(model_class.where(conditions))
