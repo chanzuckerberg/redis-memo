@@ -23,6 +23,7 @@ matrix:
   - rvm: ruby-head
 
 script:
+- bundle exec rubocop
 - bundle exec rake db:postgresql:reset test:postgresql
 
 deploy:
