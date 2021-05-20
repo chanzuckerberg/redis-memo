@@ -33,7 +33,7 @@ Naming/MethodName:
   Enabled: true
 
 Naming/MethodParameterName:
-  Enabled: true
+  Enabled: false
 
 Naming/PredicateName:
   Enabled: false
