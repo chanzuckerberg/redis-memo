@@ -91,7 +91,7 @@ RSpec/ExpectOutput:
   Enabled: true
 
 RSpec/FilePath:
-  Enabled: true
+  Enabled: false
 
 RSpec/Focus:
   Enabled: true
