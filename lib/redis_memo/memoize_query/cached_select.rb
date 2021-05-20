@@ -260,11 +260,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
           }
         else
           bind_params = bind_params.union(extract_bind_params_recurse(right))
-          if bind_params
-            next
-          else
-            return
-          end
+          return if !bind_params
         end
       end
 

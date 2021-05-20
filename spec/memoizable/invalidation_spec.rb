@@ -38,10 +38,10 @@ describe RedisMemo::Memoizable::Invalidation do
       end
 
       def eval(*)
-        if @retry_count < 3
-          @retry_count += 1
-          raise Redis::BaseConnectionError
-        end
+        return unless @retry_count < 3
+
+        @retry_count += 1
+        raise Redis::BaseConnectionError
       end
 
       def with(*)

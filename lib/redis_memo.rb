@@ -104,8 +104,9 @@ module RedisMemo
     # The connection attempts count and max connection attempts are reset in
     # RedisMemo.with_max_connection_attempts
     ThreadLocalVar.connection_attempts_count += 1
-    if ThreadLocalVar.connection_attempts_count >= ThreadLocalVar.max_connection_attempts
-      ThreadLocalVar.without_memo = true
-    end
+    return if ThreadLocalVar.connection_attempts_count <
+              ThreadLocalVar.max_connection_attempts
+
+    ThreadLocalVar.without_memo = true
   end
 end

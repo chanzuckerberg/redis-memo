@@ -15,11 +15,11 @@ class RedisMemo::Batch
   end
 
   def self.close
-    if current
-      futures = current
-      RedisMemo::ThreadLocalVar.batch = nil
-      futures
-    end
+    return unless current
+
+    futures = current
+    RedisMemo::ThreadLocalVar.batch = nil
+    futures
   end
 
   def self.current
