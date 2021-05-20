@@ -27,7 +27,7 @@ class RedisMemo::Options
     @compress = compress.nil? ? true : compress
     @compress_threshold = compress_threshold || 1.kilobyte
     @redis_config = redis
-    @redis_client = nil
+    @redis = nil
     @redis_error_handler = redis_error_handler
     @tracer = tracer
     @logger = logger
@@ -41,7 +41,7 @@ class RedisMemo::Options
 
   # Retrieves the redis client, initializing it if it does not exist yet.
   def redis
-    @redis_client ||= RedisMemo::Redis.new(redis_config)
+    @redis ||= RedisMemo::Redis.new(redis_config)
   end
 
   # Retrieves the config values used to initialize the Redis client.
@@ -73,7 +73,7 @@ class RedisMemo::Options
   #
   def redis=(config)
     @redis_config = config
-    @redis_client = nil
+    @redis = nil
     redis
   end
 
