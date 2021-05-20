@@ -85,7 +85,7 @@ RSpec/ExpectChange:
   Enabled: true
 
 RSpec/ExpectInHook:
-  Enabled: true
+  Enabled: false
 
 RSpec/ExpectOutput:
   Enabled: true
