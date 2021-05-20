@@ -106,7 +106,6 @@ For each `load` call, the cached result on Redis will be used until its dependen
 You can configure various RedisMemo options in your initializer `config/initializers/redis_memo.rb`:
 ```ruby
 RedisMemo.configure do |config|
-
   config.expires_in = 3.hours
   config.global_cache_key_version = SecureRandom.uuid
   ...
