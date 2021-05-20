@@ -243,7 +243,7 @@ describe RedisMemo::MemoizeQuery do
               Site.find(site.id)
             end
 
-            records = 5.times.map { { a: 2 } }
+            records = Array.new(5) { { a: 2 } }
             Site.insert_all!(records)
             expect(Site.a_count(2)).to eq(7)
 
@@ -267,7 +267,7 @@ describe RedisMemo::MemoizeQuery do
               Site.find(site.id)
             end
 
-            records = 5.times.map { { a: 2 } }
+            records = Array.new(5) { { a: 2 } }
             Site.upsert_all(records)
             expect(Site.a_count(2)).to eq(7)
 
@@ -290,7 +290,7 @@ describe RedisMemo::MemoizeQuery do
             Site.find(site.id)
           end
 
-          records = 5.times.map { Site.new(a: 2) }
+          records = Array.new(5) { Site.new(a: 2) }
           Site.import(records)
           expect(Site.a_count(2)).to eq(7)
 
