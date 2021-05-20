@@ -8,7 +8,9 @@ require_relative 'options'
 # Redis::Distributed does not support reading from multiple read replicas. This
 # class adds this functionality
 class RedisMemo::Redis < Redis::Distributed
-  def initialize(options = {})
+  def initialize(
+    options = {} # rubocop: disable Style/OptionHash
+  )
     clients =
       if options.is_a?(Array)
         options.map do |option|
