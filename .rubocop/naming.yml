@@ -18,6 +18,8 @@ Naming/ConstantName:
 
 Naming/FileName:
   Enabled: true
+  Exclude:
+  - lib/redis-memo.rb
 
 Naming/HeredocDelimiterCase:
   Enabled: true
