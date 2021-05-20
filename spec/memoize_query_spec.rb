@@ -1,5 +1,6 @@
 require 'activerecord-import'
 
+# rubocop: disable RSpec/LeakyConstantDeclaration
 describe RedisMemo::MemoizeQuery do
   class Site < ActiveRecord::Base
     extend RedisMemo::MemoizeMethod
@@ -234,7 +235,7 @@ describe RedisMemo::MemoizeQuery do
       end
 
       # Test cases for activerecord >= 6
-      if Site.respond_to?(:insert!)
+      if Rails.version >= '6'
         it 'recalculates after insert' do
           RedisMemo::Cache.with_local_cache do
             site = Site.create!(a: 0)
@@ -258,7 +259,7 @@ describe RedisMemo::MemoizeQuery do
         end
       end
 
-      if Site.respond_to?(:upsert_all)
+      if Rails.version >= '6'
         it 'recalculates after upsert' do
           RedisMemo::Cache.with_local_cache do
             site = Site.create!(a: 0)
@@ -694,3 +695,4 @@ describe RedisMemo::MemoizeQuery do
     end
   end
 end
+# rubocop: enable RSpec/LeakyConstantDeclaration

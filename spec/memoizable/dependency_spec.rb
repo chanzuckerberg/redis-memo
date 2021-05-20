@@ -2,31 +2,33 @@
 
 describe RedisMemo::Memoizable::Invalidation do
   context 'with a DAG' do
-    module RedisMemoSpecDAG
-      # a ->   b   ->  d
-      #   \->  c   /
-      def self.a(val)
-        RedisMemo::Memoizable.new(id: :a, val: val)
-      end
-
-      def self.b(val)
-        RedisMemo::Memoizable.new(id: :b, val: val) do
-          depends_on RedisMemoSpecDAG.a(val)
+    before(:each) do
+      stub_const('RedisMemoSpecDAG', Class.new do
+        # a ->   b   ->  d
+        #   \->  c   /
+        def self.a(val)
+          RedisMemo::Memoizable.new(id: :a, val: val)
         end
-      end
 
-      def self.c(val)
-        RedisMemo::Memoizable.new(id: :c, val: val) do
-          depends_on RedisMemoSpecDAG.a(val)
+        def self.b(val)
+          RedisMemo::Memoizable.new(id: :b, val: val) do
+            depends_on RedisMemoSpecDAG.a(val)
+          end
         end
-      end
 
-      def self.d(val)
-        RedisMemo::Memoizable.new(id: :d, val: val) do
-          depends_on RedisMemoSpecDAG.b(val)
-          depends_on RedisMemoSpecDAG.c(val)
+        def self.c(val)
+          RedisMemo::Memoizable.new(id: :c, val: val) do
+            depends_on RedisMemoSpecDAG.a(val)
+          end
         end
-      end
+
+        def self.d(val)
+          RedisMemo::Memoizable.new(id: :d, val: val) do
+            depends_on RedisMemoSpecDAG.b(val)
+            depends_on RedisMemoSpecDAG.c(val)
+          end
+        end
+      end)
     end
 
     it 'makes one round trip to fetch the memo versions' do
@@ -257,19 +259,21 @@ describe RedisMemo::Memoizable::Invalidation do
   end
 
   context 'with a directed cyclic graph' do
-    module RedisMemoSpecDG
-      # a <-> b
-      def self.a(val)
-        RedisMemo::Memoizable.new(id: :a, val: val) do
-          depends_on RedisMemoSpecDG.b(val)
+    before(:each) do
+      stub_const('RedisMemoSpecDG', Class.new do
+        # a <-> b
+        def self.a(val)
+          RedisMemo::Memoizable.new(id: :a, val: val) do
+            depends_on RedisMemoSpecDG.b(val)
+          end
         end
-      end
 
-      def self.b(val)
-        RedisMemo::Memoizable.new(id: :b, val: val) do
-          depends_on RedisMemoSpecDG.a(val)
+        def self.b(val)
+          RedisMemo::Memoizable.new(id: :b, val: val) do
+            depends_on RedisMemoSpecDG.a(val)
+          end
         end
-      end
+      end)
     end
 
     it 'still works' do
@@ -320,22 +324,23 @@ describe RedisMemo::Memoizable::Invalidation do
   end
 
   context 'with an arel dependency' do
-    class SpecModel < ActiveRecord::Base
-      extend RedisMemo::MemoizeMethod
-      extend RedisMemo::MemoizeQuery
-
-      attr_accessor :calc_count
-
-      def calc
-        SpecModel.where(a: a).to_a
-        @calc_count += 1
-      end
-
-      memoize_method :calc do |record|
-        depends_on SpecModel.where(a: record.a)
-      end
-    end
     before(:each) do
+      stub_const('SpecModel', Class.new(ActiveRecord::Base) do
+        extend RedisMemo::MemoizeMethod
+        extend RedisMemo::MemoizeQuery
+
+        attr_accessor :calc_count
+
+        def calc
+          SpecModel.where(a: a).to_a
+          @calc_count += 1
+        end
+
+        memoize_method :calc do |record|
+          depends_on SpecModel.where(a: record.a)
+        end
+      end)
+
       ActiveRecord::Base.connection.execute 'drop table if exists spec_models'
       ActiveRecord::Base.connection.create_table :spec_models do |t|
         t.integer 'a', default: 0

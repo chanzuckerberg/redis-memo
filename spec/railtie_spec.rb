@@ -1,8 +1,12 @@
 describe RedisMemo::Railtie do
-  class TestApplication < Rails::Application; end
-
-  TestApplication.configure do
-    config.eager_load = false
+  before(:each) do
+    stub_const(
+      'TestApplication',
+      Class.new(Rails::Application),
+    )
+    TestApplication.configure do
+      config.eager_load = false
+    end
   end
 
   it 'inserts middleware' do
