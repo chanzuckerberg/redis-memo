@@ -41,7 +41,7 @@ describe RedisMemo::Options do
   context 'disable caching options' do
     # Reset options to default values after each test
     before(:each) do
-      stub_const("RedisMemo::DefaultOptions", RedisMemo::Options.new)
+      stub_const('RedisMemo::DefaultOptions', RedisMemo::Options.new)
     end
 
     def expect_no_caching
@@ -69,7 +69,6 @@ describe RedisMemo::Options do
     end
 
     context 'query caching' do
-
       before(:all) do
         ActiveRecord::Base.connection.execute 'drop table if exists test_models'
         ActiveRecord::Base.connection.create_table :test_models do |t|
@@ -85,11 +84,11 @@ describe RedisMemo::Options do
       let(:test_model_klass) { Class.new(ActiveRecord::Base) { extend RedisMemo::MemoizeQuery } }
 
       before(:each) do
-        Object.const_set("TestModel", test_model_klass)
+        Object.const_set('TestModel', test_model_klass)
       end
 
       after(:each) do
-        Object.send(:remove_const, "TestModel")
+        Object.send(:remove_const, 'TestModel')
       end
 
       it 'disables query caching on tables that are disabled' do
