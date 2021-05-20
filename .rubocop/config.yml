@@ -1,6 +1,8 @@
 AllCops:
   ExtraDetails: true
   DisabledByDefault: true
+  SuggestExtensions:
+    rubocop-rake: false
 
 inherit_from:
   - bundler.yml
