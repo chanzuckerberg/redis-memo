@@ -210,6 +210,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   # Note: Arel::Nodes#each returns a list in post-order, and it does not step
   # into Union nodes. So we're implementing our own DFS
   def self.extract_bind_params_recurse(node)
+    # rubocop: disable Lint/NonLocalExitFromIterator
     bind_params = BindParams.new
 
     case node
@@ -339,6 +340,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       # Not yet supported
       nil
     end
+    # rubocop: enable Lint/NonLocalExitFromIterator
   end
 
   def self.extract_binding_relation(table_node)
