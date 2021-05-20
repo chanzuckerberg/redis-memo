@@ -184,7 +184,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'works using a dependency block with a splat' do
         obj.class_eval do
-          memoize_method :test do |_, _, *args, _, a|; end
+          memoize_method(:test) { |_, _, *args, _, a| }
         end
         RedisMemo::Cache.with_local_cache do
           add_test_case([2, 3, 5]) { 5.times { obj.test(1, 2, 3, 4, 5) } }
@@ -194,7 +194,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'works using a dependency block with keyword args' do
         obj.class_eval do
-          memoize_method :test do |_, *args, a:, b:, **kwargs|; end
+          memoize_method(:test) { |_, *args, a:, b:, **kwargs| }
         end
         RedisMemo::Cache.with_local_cache do
           add_test_case([1, 2, 3, { a: 4, b: 5, c: 6, d: 6 }]) { 5.times { obj.test(1, 2, 3, a: 4, b: 5, c: 6, d: 6) } }
@@ -204,7 +204,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'works using a dependency block with anonomyous splats' do
         obj.class_eval do
-          memoize_method :test do |_, a, b, *, c, d:, **|; end
+          memoize_method(:test) { |_, a, b, *, c, d:, **| }
         end
         RedisMemo::Cache.with_local_cache do
           add_test_case([1, 1, 1, { d: 3 }]) do
@@ -216,7 +216,7 @@ describe RedisMemo::Memoizable::Invalidation do
 
       it 'raises an error when a block is a parameter in the dependency block' do
         obj.class_eval do
-          memoize_method :test do |_, *, **, &blk|; end
+          memoize_method(:test) { |_, *, **, &blk| }
         end
         RedisMemo::Cache.with_local_cache do
           expect {
