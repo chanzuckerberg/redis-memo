@@ -26,9 +26,9 @@ class RedisMemo::Cache < ActiveSupport::Cache::RedisCacheStore
 
     if RedisMemo::ThreadLocalVar.raise_error
       raise RedisMemo::Cache::Rescuable
-    else
-      returning
     end
+
+    returning
   end
 
   def self.redis

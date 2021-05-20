@@ -44,9 +44,11 @@ module RedisMemo::MemoizeQuery
   end
 
   def self.using_active_record!(model_class)
-    unless using_active_record?(model_class)
-      raise RedisMemo::ArgumentError.new("'#{model_class.name}' does not use ActiveRecord")
-    end
+    return if using_active_record?(model_class)
+
+    raise RedisMemo::ArgumentError.new(
+      "'#{model_class.name}' does not use ActiveRecord",
+    )
   end
 
   def self.using_active_record?(model_class)
