@@ -236,7 +236,7 @@ Style/MissingElse:
   Enabled: false
 
 Style/MissingRespondToMissing:
-  Enabled: true
+  Enabled: false
 
 Style/MixinGrouping:
   Enabled: true
