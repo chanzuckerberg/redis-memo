@@ -2,16 +2,18 @@
 describe RedisMemo::Redis do
   let(:redis) { RedisMemo::Cache.redis }
 
-  class FakeClient
-    attr_reader :id
+  before(:each) do
+    stub_const('FakeClient', Class.new do
+      attr_reader :id
 
-    def initialize(id)
-      @id = id
-    end
+      def initialize(id)
+        @id = id
+      end
 
-    def get(*); end
+      def get(*); end
 
-    def set(*); end
+      def set(*); end
+    end)
   end
 
   it 'distributes keys' do
