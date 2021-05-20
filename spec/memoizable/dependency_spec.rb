@@ -160,10 +160,13 @@ describe RedisMemo::Memoizable::Invalidation do
     end
 
     context 'for different parameter formats in the dependency block' do
-      klass = Class.new do
-        extend RedisMemo::MemoizeMethod
+      let(:klass) do
+        Class.new do
+          extend RedisMemo::MemoizeMethod
+        end
       end
-      let(:obj) { obj = klass.new }
+
+      let(:obj) { klass.new }
 
       def add_test_case(named_args)
         # Expect dependencies to only get extracted once
