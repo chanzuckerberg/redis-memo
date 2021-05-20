@@ -591,10 +591,6 @@ describe RedisMemo::MemoizeQuery do
           expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
         end
 
-        # When unaffected creation happens, it does not affect the unaffected query
-        # Creating new record with a = 0 and b = 3 should not affect the query of (a >= 3 and b = 2) or (a <= 2 and b = 2)
-        new_record = Site.create!(b: 3)
-
         expect_not_to_use_redis do
           expect(relation_with_less_than_and_other.reload.to_a).to eq([record])
         end
