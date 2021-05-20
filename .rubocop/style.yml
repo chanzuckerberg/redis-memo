@@ -48,7 +48,7 @@ Style/ClassMethods:
   Enabled: true
 
 Style/ClassVars:
-  Enabled: true
+  Enabled: false
 
 Style/CollectionMethods:
   Enabled: true
