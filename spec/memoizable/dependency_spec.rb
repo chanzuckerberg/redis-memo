@@ -384,8 +384,8 @@ describe RedisMemo::Memoizable::Invalidation do
           @calc_count += 2
         end
 
-        memoize_method :calc_2 do |record|
-          depends_on SpecModel.where(not_memoized: record.not_memoized)
+        memoize_method :calc_2 do |r|
+          depends_on SpecModel.where(not_memoized: r.not_memoized)
         end
       end
       expect {
@@ -412,10 +412,10 @@ describe RedisMemo::Memoizable::Invalidation do
           @calc_count += 2
         end
 
-        memoize_method :calc_2 do |record, without_memoization|
+        memoize_method :calc_2 do |r, without_memoization|
           raise RedisMemo::WithoutMemoization if without_memoization
 
-          depends_on SpecModel.where(a: record.a)
+          depends_on SpecModel.where(a: r.a)
         end
       end
       expect {
