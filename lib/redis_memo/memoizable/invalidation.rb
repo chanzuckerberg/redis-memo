@@ -136,7 +136,7 @@ module RedisMemo::Memoizable::Invalidation
       end
     end
   ensure
-    retry_queue.each { |task| @@invalidation_queue << task }
+    retry_queue.each { |t| @@invalidation_queue << t }
   end
 
   at_exit do
