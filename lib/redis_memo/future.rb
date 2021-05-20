@@ -103,7 +103,7 @@ class RedisMemo::Future
 
     RedisMemo::Tracer.trace('redis_memo.cache.write', @method_id) do
       # cache miss
-      @fresh_result = @ref.send(@method_name_without_memo, *@method_args)
+      @fresh_result = @ref.__send__(@method_name_without_memo, *@method_args)
       if @cache_options.include?(:expires_in) && @cache_options[:expires_in].respond_to?(:call)
         @cache_options[:expires_in] = @cache_options[:expires_in].call(@fresh_result)
       end

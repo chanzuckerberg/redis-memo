@@ -63,7 +63,7 @@ module RedisMemo::Memoizable::Invalidation
       )[key]
     end
 
-    local_cache&.send(:[]=, key, version)
+    local_cache&.__send__(:[]=, key, version)
     if RedisMemo::AfterCommit.in_transaction?
       RedisMemo::AfterCommit.bump_memo_version_after_commit(
         key,

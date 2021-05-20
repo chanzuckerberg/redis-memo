@@ -15,14 +15,14 @@ class RedisMemo::ConnectionPool
   %i[get mget mapped_mget set eval].each do |method_name|
     define_method method_name do |*args, &blk|
       @connection_pool.with do |redis|
-        redis.send(method_name, *args, &blk)
+        redis.__send__(method_name, *args, &blk)
       end
     end
   end
 
   def method_missing(method_name, *args, &blk)
     @connection_pool.with do |redis|
-      redis.send(method_name, *args, &blk)
+      redis.__send__(method_name, *args, &blk)
     end
   end
 end

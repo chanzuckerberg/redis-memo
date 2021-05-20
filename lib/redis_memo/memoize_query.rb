@@ -110,7 +110,7 @@ module RedisMemo::MemoizeQuery
     memos_to_invalidate = memoized_columns(record.class).map do |columns|
       props = {}
       columns.each do |column|
-        props[column] = record.send(column)
+        props[column] = record.__send__(column)
       end
 
       create_memo(record.class, **props)
@@ -133,7 +133,7 @@ module RedisMemo::MemoizeQuery
         columns.each do |column|
           next if props.include?(column)
 
-          props[column] = record.send(column)
+          props[column] = record.__send__(column)
         end
 
         memos_to_invalidate << create_memo(record.class, **props)

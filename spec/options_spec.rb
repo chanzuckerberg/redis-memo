@@ -88,7 +88,7 @@ describe RedisMemo::Options do
       end
 
       after(:each) do
-        Object.send(:remove_const, 'TestModel')
+        Object.__send__(:remove_const, 'TestModel')
       end
 
       it 'disables query caching on tables that are disabled' do
