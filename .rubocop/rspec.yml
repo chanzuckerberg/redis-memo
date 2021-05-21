@@ -118,9 +118,6 @@ RSpec/InstanceSpy:
 RSpec/InstanceVariable:
   Enabled: true
 
-RSpec/InvalidPredicateMatcher:
-  Enabled: true
-
 RSpec/ItBehavesLike:
   Enabled: true
 
