@@ -137,8 +137,7 @@ class RedisMemo::Options
   # that there are incorrect dependencies specified on a cached method.
   attr_accessor :cache_out_of_date_handler
 
-  # TODO: Remove and replace with cache_validation_sample_rate
-  attr_accessor :cache_validation_sampler
+  attr_accessor :cache_validation_sample_percentage
 
   # Passed along to the Rails {RedisCacheStore}[https://api.rubyonrails.org/classes/ActiveSupport/Cache/RedisCacheStore.html], determines whether or not to compress entries before storing
   # them. default: `true`
