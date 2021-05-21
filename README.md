@@ -102,6 +102,17 @@ end
 ```
 For each `load` call, the cached result on Redis will be used until its dependencies have been invalidated.
 
+## Configure RedisMemo
+You can configure various RedisMemo options in your initializer `config/initializers/redis_memo.rb`:
+```ruby
+RedisMemo.configure do |config|
+  config.expires_in = 3.hours
+  config.global_cache_key_version = SecureRandom.uuid
+  ...
+end
+```
+Learn more [here](https://github.com/chanzuckerberg/redis-memo/wiki/Configure-RedisMemo).
+
 ## Why RedisMemo?
 
 1. [Database caching](https://github.com/chanzuckerberg/redis-memo/wiki/Database-caching): Quick review of why caching is important
