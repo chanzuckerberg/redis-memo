@@ -19,7 +19,7 @@ require_relative 'tracer'
 #     5.times { |i| memoized_calculation(i) }
 #     nil # Not the return value of the block
 #   end
-#   results.size == 5 # true
+#   results # [1,2,3,4,5] (results from the memoized_calculation calls)
 class RedisMemo::Batch
   RedisMemo::ThreadLocalVar.define :batch
 
