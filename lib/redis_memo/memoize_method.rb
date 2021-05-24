@@ -8,6 +8,28 @@ require_relative 'options'
 require_relative 'util'
 
 module RedisMemo::MemoizeMethod
+
+  # Core entry method for using RedisMemo to cache a method's results. When a method is memoized, all
+  # calls to the method  will first check if the results exist in the RedisMemo cache before calling
+  # the original method.
+  #
+  # @example
+  #   class Post < ApplicationRecord
+  #     extend RedisMemo::MemoizeMethod
+  #     def display_title
+  #       "#{title} by #{author.display_name}"
+  #     end
+  #     memoize_method :display_title do |post|
+  #       depends_on Post.where(id: post.id)
+  #       depends_on User.where(id: post.author_id)
+  #     end
+  #   end
+  #
+  # @param method_name [String] The name of the method to memoize
+  # @param method_id [String] Optionally, a method_id that's used to tag APM traces of RedisMemo calls.
+  # @param options [Hash] Cache options to pass to RedisMemo. These values will override the global
+  #        cache options.
+  # @param depends_on [block] The method's dependency block
   def memoize_method(method_name, method_id: nil, **options, &depends_on)
     method_name_without_memo = :"_redis_memo_#{method_name}_without_memo"
     method_name_with_memo = :"_redis_memo_#{method_name}_with_memo"
@@ -19,7 +41,7 @@ module RedisMemo::MemoizeMethod
 
       dependent_memos = nil
       if depends_on
-        dependency = RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *args, &depends_on)
+        dependency = RedisMemo::MemoizeMethod.send(:get_or_extract_dependencies, self, *args, &depends_on)
         dependent_memos = dependency.memos
       end
 
@@ -27,7 +49,7 @@ module RedisMemo::MemoizeMethod
         self,
         case method_id
         when NilClass
-          RedisMemo::MemoizeMethod.method_id(self, method_name)
+          RedisMemo::MemoizeMethod.send(:method_id, self, method_name)
         when String, Symbol
           method_id
         else
@@ -62,11 +84,14 @@ module RedisMemo::MemoizeMethod
         )
       end
 
-      RedisMemo::MemoizeMethod.get_or_extract_dependencies(self, *method_args, &method_depends_on)
+      RedisMemo::MemoizeMethod.send(:get_or_extract_dependencies, self, *method_args, &method_depends_on)
     end
   end
 
   class << self
+
+    private
+
     def method_id(ref, method_name)
       is_class_method = ref.class == Class
       class_name = is_class_method ? ref.name : ref.class.name
@@ -126,8 +151,6 @@ module RedisMemo::MemoizeMethod
     rescue RedisMemo::Cache::Rescuable
       nil
     end
-
-    private
 
     def extract_dependencies(ref, *method_args, &depends_on)
       dependency = RedisMemo::Memoizable::Dependency.new
