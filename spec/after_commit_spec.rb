@@ -6,7 +6,7 @@ describe RedisMemo::AfterCommit do
   end
 
   def memo_checksum
-    RedisMemo::Memoizable.checksums([[memo]]).first
+    RedisMemo::Memoizable.__send__(:checksums, [[memo]]).first
   end
 
   let!(:klass) do

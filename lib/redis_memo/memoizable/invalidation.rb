@@ -3,6 +3,7 @@
 require_relative '../after_commit'
 require_relative '../cache'
 
+# Module containing the logic to perform invalidation on +RedisMemo::Memoizable+s.
 module RedisMemo::Memoizable::Invalidation
   class Task
     attr_reader :key
@@ -45,36 +46,9 @@ module RedisMemo::Memoizable::Invalidation
   # operations that triggered the invalidation has not yet happened.
   @@invalidation_queue = Queue.new
 
-  def self.bump_version_later(key, version, previous_version: nil)
-    if RedisMemo::AfterCommit.in_transaction?
-      previous_version ||= RedisMemo::AfterCommit.pending_memo_versions[key]
-    end
-
-    local_cache = RedisMemo::Cache.local_cache
-    if previous_version.nil? && local_cache&.include?(key)
-      previous_version = local_cache[key]
-    elsif RedisMemo::AfterCommit.in_transaction?
-      # Fill an expected previous version so the later calculation results
-      # based on this version can still be rolled out if this version
-      # does not change
-      previous_version ||= RedisMemo::Cache.read_multi(
-        key,
-        raw: true,
-      )[key]
-    end
-
-    local_cache&.__send__(:[]=, key, version)
-    if RedisMemo::AfterCommit.in_transaction?
-      RedisMemo::AfterCommit.bump_memo_version_after_commit(
-        key,
-        version,
-        previous_version: previous_version,
-      )
-    else
-      @@invalidation_queue << Task.new(key, version, previous_version)
-    end
-  end
-
+  # Drains the invalidation queue by bumping the versions of all memoizable cache
+  # keys currently in the queue. Performs invalidation asynchronously if an async
+  # handler is configured; otherwise, invaidation is done synchronously.
   def self.drain_invalidation_queue
     async_handler = RedisMemo::DefaultOptions.async
     if async_handler.nil?
@@ -107,20 +81,12 @@ module RedisMemo::Memoizable::Invalidation
 
     return redis.call('set', key, new_version, unpack(px))
   LUA
+  private_constant :LUA_BUMP_VERSION
 
-  def self.bump_version(task)
-    RedisMemo::Tracer.trace('redis_memo.memoizable.bump_version', task.key) do
-      ttl = RedisMemo::DefaultOptions.expires_in
-      ttl = (ttl * 1000.0).to_i if ttl
-      RedisMemo::Cache.redis.eval(
-        LUA_BUMP_VERSION,
-        keys: [task.key],
-        argv: [task.previous_version, task.version, RedisMemo::Util.uuid, ttl],
-      )
-      RedisMemo::Tracer.set_tag(enqueue_to_finish: task.duration)
-    end
-  end
-
+  # Drains the invalidation queue synchronously by bumping the versions of all
+  # memoizable cache keys currently in the queue. If invalidation on a cache key
+  # fails due to transient Redis errors, the key is put back into the invalidation
+  # queue and retried on the next invalidation queue drain.
   def self.drain_invalidation_queue_now
     retry_queue = []
     until @@invalidation_queue.empty?
@@ -142,5 +108,52 @@ module RedisMemo::Memoizable::Invalidation
   at_exit do
     # The best effort
     drain_invalidation_queue_now
+  end
+
+  class << self
+    private
+
+    def bump_version_later(key, version, previous_version: nil)
+      if RedisMemo::AfterCommit.in_transaction?
+        previous_version ||= RedisMemo::AfterCommit.pending_memo_versions[key]
+      end
+
+      local_cache = RedisMemo::Cache.local_cache
+      if previous_version.nil? && local_cache&.include?(key)
+        previous_version = local_cache[key]
+      elsif RedisMemo::AfterCommit.in_transaction?
+        # Fill an expected previous version so the later calculation results
+        # based on this version can still be rolled out if this version
+        # does not change
+        previous_version ||= RedisMemo::Cache.read_multi(
+          key,
+          raw: true,
+        )[key]
+      end
+
+      local_cache&.__send__(:[]=, key, version)
+      if RedisMemo::AfterCommit.in_transaction?
+        RedisMemo::AfterCommit.bump_memo_version_after_commit(
+          key,
+          version,
+          previous_version: previous_version,
+        )
+      else
+        @@invalidation_queue << Task.new(key, version, previous_version)
+      end
+    end
+
+    def bump_version(task)
+      RedisMemo::Tracer.trace('redis_memo.memoizable.bump_version', task.key) do
+        ttl = RedisMemo::DefaultOptions.expires_in
+        ttl = (ttl * 1000.0).to_i if ttl
+        RedisMemo::Cache.redis.eval(
+          LUA_BUMP_VERSION,
+          keys: [task.key],
+          argv: [task.previous_version, task.version, RedisMemo::Util.uuid, ttl],
+        )
+        RedisMemo::Tracer.set_tag(enqueue_to_finish: task.duration)
+      end
+    end
   end
 end
