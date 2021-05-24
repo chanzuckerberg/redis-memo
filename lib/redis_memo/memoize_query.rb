@@ -9,8 +9,33 @@ module RedisMemo::MemoizeQuery
   require_relative 'memoize_query/invalidation'
   require_relative 'memoize_query/model_callback'
 
-  # Only editable columns will be used to create memos that are invalidatable
-  # after each record save
+  # Core entry method for using RedisMemo to cache SQL select queries on the given
+  # column names.
+  #
+  #   class User < ApplicationRecord
+  #     extend RedisMemo::MemoizeQuery
+  #     memoize_table_column :id
+  #     memoize_table_column :first_name
+  #     memoize_table_column :first_name, last_name
+  #   end
+  #
+  # On the User model, queries such as
+  #   - +record.user+
+  #   - +User.find(user_id)+
+  #   - +User.where(id: user_id).first+
+  #   - +User.where(first_name: first_name).first+
+  #   - +User.where(first_name: first_name, last_name: last_name).first+
+  #   - +User.find_by_first_name(first_name)+
+  # will first check the Redis cache for the data before hitting the SQL database;
+  # the cache results are invalidated automatically when user records are changed.
+  #
+  # Note that +memoize_table_column :first_name, last_name+ specifies that only AND queries
+  # that contain both columns will be memozed. The query +User.where(last_name: last_name)+
+  # will NOT be memoized with the given configuration.
+  #
+  # @param raw_columns [Array] A list of columns to memoize.
+  # @param ediable [Boolean] Specify if the column is editable. Only editable columns
+  # will be used to create memos that are invalidatable after each record save.
   def memoize_table_column(*raw_columns, editable: true)
     RedisMemo::MemoizeQuery.using_active_record!(self)
     return if RedisMemo::DefaultOptions.disable_all
@@ -42,6 +67,8 @@ module RedisMemo::MemoizeQuery
     # no-opts: models with memoize_table_column decleared might be loaded in
     # rake tasks that are used to create databases
   end
+
+  private
 
   def self.using_active_record!(model_class)
     return if using_active_record?(model_class)
