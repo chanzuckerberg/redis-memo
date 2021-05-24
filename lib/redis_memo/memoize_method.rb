@@ -28,7 +28,14 @@ module RedisMemo::MemoizeMethod
   # @param method_id [String] Optionally, a method_id that's used to tag APM traces of RedisMemo calls.
   # @param options [Hash] Cache options to pass to RedisMemo. These values will override the global
   #        cache options.
-  # @param depends_on [block] The method's dependency block
+  # @option options [Integer] :expires_in The TTL for this method's cached result.
+  # @option options [Hash] :redis_options Other valid options are ones which are passed along to the Rails {RedisCacheStore}[https://api.rubyonrails.org/classes/ActiveSupport/Cache/RedisCacheStore.html].
+  # @param depends_on [block] The method's dependency block.
+  #        - The first parameter of the block is a reference to the object whose method is being memoized.
+  #        - The rest of the block parameters are the memoized method's argument.
+  #        - Within this block, you can declare the method's dependencies as individual +RedisMemo::Memoizable+'s,
+  #          using the +RedisMemo::Dependency.depends_on+ method. RedisMemo will automatically extract dependencies
+  #          from this block and use them to compute a method's versioned cache key.
   def memoize_method(method_name, method_id: nil, **options, &depends_on)
     method_name_without_memo = :"_redis_memo_#{method_name}_without_memo"
     method_name_with_memo = :"_redis_memo_#{method_name}_with_memo"
