@@ -3,23 +3,23 @@
 require_relative 'cache'
 require_relative 'tracer'
 
-  ##
-  # This class facilitates the batching of Redis calls triggered by +memoize_method+
-  # to minimize the number of round trips to Redis.
-  #
-  # - Batches cannot be nested
-  # - When a batch is still open (while still in the +RedisMemo.batch+ block)
-  #   the return value of any memoized method is a +RedisMemo::Future+ instead of
-  #   the actual method value
-  # - The actual method values are returned as a list, in the same order as
-  #   invoking, after exiting the block
-  #
-  # @example
-  #   results = RedisMemo.batch do
-  #     5.times { |i| memoized_calculation(i) }
-  #     nil # Not the return value of the block
-  #   end
-  #   results.size == 5 # true
+##
+# This class facilitates the batching of Redis calls triggered by +memoize_method+
+# to minimize the number of round trips to Redis.
+#
+# - Batches cannot be nested
+# - When a batch is still open (while still in the +RedisMemo.batch+ block)
+#   the return value of any memoized method is a +RedisMemo::Future+ instead of
+#   the actual method value
+# - The actual method values are returned as a list, in the same order as
+#   invoking, after exiting the block
+#
+# @example
+#   results = RedisMemo.batch do
+#     5.times { |i| memoized_calculation(i) }
+#     nil # Not the return value of the block
+#   end
+#   results.size == 5 # true
 class RedisMemo::Batch
   RedisMemo::ThreadLocalVar.define :batch
 
@@ -57,7 +57,7 @@ class RedisMemo::Batch
     method_cache_keys = nil
 
     RedisMemo::Tracer.trace('redis_memo.cache.batch.read', nil) do
-      method_cache_keys = RedisMemo::MemoizeMethod.send(
+      method_cache_keys = RedisMemo::MemoizeMethod.__send__(
         :method_cache_keys,
         futures.map(&:context),
       )

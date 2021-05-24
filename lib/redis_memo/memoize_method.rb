@@ -8,7 +8,6 @@ require_relative 'options'
 require_relative 'util'
 
 module RedisMemo::MemoizeMethod
-
   # Core entry method for using RedisMemo to cache a method's results. When a method is memoized, all
   # calls to the method  will first check if the results exist in the RedisMemo cache before calling
   # the original method.
@@ -41,7 +40,7 @@ module RedisMemo::MemoizeMethod
 
       dependent_memos = nil
       if depends_on
-        dependency = RedisMemo::MemoizeMethod.send(:get_or_extract_dependencies, self, *args, &depends_on)
+        dependency = RedisMemo::MemoizeMethod.__send__(:get_or_extract_dependencies, self, *args, &depends_on)
         dependent_memos = dependency.memos
       end
 
@@ -49,7 +48,7 @@ module RedisMemo::MemoizeMethod
         self,
         case method_id
         when NilClass
-          RedisMemo::MemoizeMethod.send(:method_id, self, method_name)
+          RedisMemo::MemoizeMethod.__send__(:method_id, self, method_name)
         when String, Symbol
           method_id
         else
@@ -84,12 +83,11 @@ module RedisMemo::MemoizeMethod
         )
       end
 
-      RedisMemo::MemoizeMethod.send(:get_or_extract_dependencies, self, *method_args, &method_depends_on)
+      RedisMemo::MemoizeMethod.__send__(:get_or_extract_dependencies, self, *method_args, &method_depends_on)
     end
   end
 
   class << self
-
     private
 
     def method_id(ref, method_name)
