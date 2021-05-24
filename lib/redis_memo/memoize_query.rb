@@ -37,7 +37,7 @@ module RedisMemo::MemoizeQuery
   # @param ediable [Boolean] Specify if the column is editable. Only editable columns
   # will be used to create memos that are invalidatable after each record save.
   def memoize_table_column(*raw_columns, editable: true)
-    RedisMemo::MemoizeQuery.using_active_record!(self)
+    RedisMemo::MemoizeQuery.__send__(:using_active_record!, self)
     return if RedisMemo::DefaultOptions.disable_all
     return if RedisMemo::DefaultOptions.model_disabled_for_caching?(self)
 
@@ -94,11 +94,45 @@ module RedisMemo::MemoizeQuery
 
   # Returns the list of columns currently memoized on the model or table
   #
-  # @params model_or_table [Class] or [String] The ActiveRecord model class or table name
-  # @params editable [Boolean] Specifies whether to retrieve only editable columns
+  # @param model_or_table [Class] or [String] The ActiveRecord model class or table name
+  # @param editable [Boolean] Specifies whether to retrieve only editable columns
   def self.memoized_columns(model_or_table, editable_only: false)
     table = model_or_table.is_a?(Class) ? model_or_table.table_name : model_or_table
     @@memoized_columns[table.to_sym][editable_only ? 1 : 0]
+  end
+
+  # Creates a +RedisMemo::Memoizable+ from the given ActiveRecord model class and column values.
+  #
+  # @param model_class [Class] The ActiveRecord model class
+  # @param extra_props [Hash] Props representing any column values on the model. +extra_props+
+  #   are considered as AND conditions on the model class
+  def self.create_memo(model_class, **extra_props)
+    using_active_record!(model_class)
+
+    keys = extra_props.keys.sort
+    if !keys.empty? && !memoized_columns(model_class).include?(keys)
+      raise RedisMemo::ArgumentError.new("'#{model_class.name}' has not memoized columns: #{keys}")
+    end
+
+    extra_props.each do |key, value|
+      # The data type is ensured by the database, thus we don't need to cast
+      # types here for better performance
+      column_name = key.to_s
+      extra_props[key] =
+        if model_class.defined_enums.include?(column_name)
+          enum_mapping = model_class.defined_enums[column_name]
+          # Assume a value is a converted enum if it does not exist in the
+          # enum mapping
+          (enum_mapping[value.to_s] || value).to_s
+        else
+          value.to_s
+        end
+    end
+
+    RedisMemo::Memoizable.new(
+      __redis_memo_memoize_query_table_name__: model_class.table_name,
+      **extra_props,
+    )
   end
 
   class << self
@@ -114,36 +148,6 @@ module RedisMemo::MemoizeQuery
 
     def using_active_record?(model_class)
       model_class.respond_to?(:<) && model_class < ActiveRecord::Base
-    end
-
-    # extra_props are considered as AND conditions on the model class
-    def create_memo(model_class, **extra_props)
-      using_active_record!(model_class)
-
-      keys = extra_props.keys.sort
-      if !keys.empty? && !memoized_columns(model_class).include?(keys)
-        raise RedisMemo::ArgumentError.new("'#{model_class.name}' has not memoized columns: #{keys}")
-      end
-
-      extra_props.each do |key, value|
-        # The data type is ensured by the database, thus we don't need to cast
-        # types here for better performance
-        column_name = key.to_s
-        extra_props[key] =
-          if model_class.defined_enums.include?(column_name)
-            enum_mapping = model_class.defined_enums[column_name]
-            # Assume a value is a converted enum if it does not exist in the
-            # enum mapping
-            (enum_mapping[value.to_s] || value).to_s
-          else
-            value.to_s
-          end
-      end
-
-      RedisMemo::Memoizable.new(
-        __redis_memo_memoize_query_table_name__: model_class.table_name,
-        **extra_props,
-      )
     end
 
     def to_memos(record)
