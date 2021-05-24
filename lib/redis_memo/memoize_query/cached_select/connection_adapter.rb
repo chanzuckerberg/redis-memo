@@ -2,7 +2,7 @@
 
 class RedisMemo::MemoizeQuery::CachedSelect
   module ConnectionAdapter
-    def cacheable_query(*args)
+    ruby2_keywords def cacheable_query(*args)
       query, binds = super(*args)
 
       # Persist the arel object to StatementCache#execute
@@ -11,7 +11,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       [query, binds]
     end
 
-    def exec_query(*args)
+    ruby2_keywords def exec_query(*args)
       # An Arel AST in Thread local is set prior to supported query methods
       if !RedisMemo.without_memo? &&
           RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(args[0])
@@ -28,7 +28,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       end
     end
 
-    def select_all(*args)
+    ruby2_keywords def select_all(*args)
       if args[0].is_a?(Arel::SelectManager)
         RedisMemo::MemoizeQuery::CachedSelect.current_query = args[0]
       end

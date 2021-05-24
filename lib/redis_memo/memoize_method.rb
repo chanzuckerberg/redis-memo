@@ -77,6 +77,7 @@ module RedisMemo::MemoizeMethod
       __send__(method_name_without_memo, *args)
     end
 
+    ruby2_keywords method_name_with_memo
     alias_method method_name, method_name_with_memo
 
     @__redis_memo_method_dependencies ||= Hash.new
@@ -92,6 +93,7 @@ module RedisMemo::MemoizeMethod
 
       RedisMemo::MemoizeMethod.__send__(:get_or_extract_dependencies, self, *method_args, &method_depends_on)
     end
+    ruby2_keywords :dependency_of
   end
 
   class << self
@@ -104,7 +106,7 @@ module RedisMemo::MemoizeMethod
       "#{class_name}#{is_class_method ? '::' : '#'}#{method_name}"
     end
 
-    def get_or_extract_dependencies(ref, *method_args, &depends_on)
+    ruby2_keywords def get_or_extract_dependencies(ref, *method_args, &depends_on)
       if RedisMemo::Cache.local_dependency_cache
         RedisMemo::Cache.local_dependency_cache[ref.class] ||= {}
         RedisMemo::Cache.local_dependency_cache[ref.class][depends_on] ||= {}
@@ -157,7 +159,7 @@ module RedisMemo::MemoizeMethod
       nil
     end
 
-    def extract_dependencies(ref, *method_args, &depends_on)
+    ruby2_keywords def extract_dependencies(ref, *method_args, &depends_on)
       dependency = RedisMemo::Memoizable::Dependency.new
 
       # Resolve the dependency recursively

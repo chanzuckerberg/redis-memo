@@ -27,6 +27,7 @@ class RedisMemo::MemoizeQuery::Invalidation
 
           result
         end
+        ruby2_keywords method_name
       end
     end
 
@@ -136,6 +137,7 @@ class RedisMemo::MemoizeQuery::Invalidation
         RedisMemo::MemoizeQuery.invalidate_all(model_class)
         result
       end
+      ruby2_keywords method_name
     end
   end
 
@@ -150,6 +152,7 @@ class RedisMemo::MemoizeQuery::Invalidation
           __send__(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
       end
+      ruby2_keywords method_name
     end
   end
 
@@ -217,6 +220,7 @@ class RedisMemo::MemoizeQuery::Invalidation
           __send__(:"#{method_name}_without_redis_memo_invalidation", *args, &blk)
         end
       end
+      ruby2_keywords method_name
     end
   end
 

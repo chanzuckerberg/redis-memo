@@ -3,6 +3,7 @@
 require 'active_support/all'
 require 'digest'
 require 'json'
+require 'ruby2_keywords'
 require 'securerandom'
 
 module RedisMemo
