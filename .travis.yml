@@ -19,7 +19,6 @@ gemfile:
 
 matrix:
   allow_failures:
-  - rvm: 3.0
   - rvm: ruby-head
 
 script:
