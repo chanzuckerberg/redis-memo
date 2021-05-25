@@ -30,7 +30,7 @@ module RedisMemo::MemoizeQuery
   # the cache results are invalidated automatically when user records are changed.
   #
   # Note that +memoize_table_column :first_name, last_name+ specifies that only AND queries
-  # that contain both columns will be memozed. The query +User.where(last_name: last_name)+
+  # that contain both columns will be memoized. The query +User.where(last_name: last_name)+
   # will NOT be memoized with the given configuration.
   #
   # @param raw_columns [Array] A list of columns to memoize.
