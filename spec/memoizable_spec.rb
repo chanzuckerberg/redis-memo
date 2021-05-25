@@ -13,12 +13,15 @@ describe RedisMemo::Memoizable do
 
       expect do
         5.times do
-          RedisMemo::Memoizable.checksums([
+          RedisMemo::Memoizable.__send__(
+            :checksums,
             [
-              RedisMemo::Memoizable.new(id: 'test1'),
-              RedisMemo::Memoizable.new(id: 'test2'),
+              [
+                RedisMemo::Memoizable.new(id: 'test1'),
+                RedisMemo::Memoizable.new(id: 'test2'),
+              ],
             ],
-          ])
+          )
         end
       end.to change { mget_count }.by(1)
     end
@@ -30,7 +33,7 @@ describe RedisMemo::Memoizable do
       RedisMemo::Memoizable.new(id: 'test2'),
     ]
 
-    RedisMemo::Memoizable.checksums([memos])
+    RedisMemo::Memoizable.__send__(:checksums, [memos])
     memos.each do |memo|
       expect(redis.get(memo.cache_key)).to_not be_nil
     end
@@ -40,8 +43,8 @@ describe RedisMemo::Memoizable do
     memo_a = RedisMemo::Memoizable.new(a: 1, b: 2)
     memo_b = RedisMemo::Memoizable.new(b: 2, a: 1)
 
-    key_a = RedisMemo::Memoizable.checksums([[memo_a]]).first
-    key_b = RedisMemo::Memoizable.checksums([[memo_b]]).first
+    key_a = RedisMemo::Memoizable.__send__(:checksums, [[memo_a]]).first
+    key_b = RedisMemo::Memoizable.__send__(:checksums, [[memo_b]]).first
     expect(key_a).to eq(key_b)
   end
 end

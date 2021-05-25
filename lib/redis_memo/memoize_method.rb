@@ -122,7 +122,7 @@ module RedisMemo::MemoizeMethod
       end
 
       j = 0
-      memo_checksums = RedisMemo::Memoizable.checksums(memos.compact)
+      memo_checksums = RedisMemo::Memoizable.__send__(:checksums, memos.compact)
       method_cache_key_versions = Array.new(future_contexts.size)
       future_contexts.each_with_index do |(method_id, method_args, _), i|
         if memos[i]

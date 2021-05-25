@@ -9,20 +9,23 @@ describe RedisMemo::Memoizable::Invalidation do
   end
 
   it 'bumps version' do
-    RedisMemo::Memoizable::Invalidation.bump_version(
+    RedisMemo::Memoizable::Invalidation.__send__(
+      :bump_version,
       RedisMemo::Memoizable::Invalidation::Task.new('key', 'version', nil),
     )
     version = redis.get('key')
     expect(version).to eq('version')
 
-    RedisMemo::Memoizable::Invalidation.bump_version(
+    RedisMemo::Memoizable::Invalidation.__send__(
+      :bump_version,
       RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', nil),
     )
     new_version = redis.get('key')
     expect(new_version).not_to eq(version)
     expect(new_version).not_to eq('new_version')
 
-    RedisMemo::Memoizable::Invalidation.bump_version(
+    RedisMemo::Memoizable::Invalidation.__send__(
+      :bump_version,
       RedisMemo::Memoizable::Invalidation::Task.new('key', 'new_version', new_version),
     )
     new_version = redis.get('key')
