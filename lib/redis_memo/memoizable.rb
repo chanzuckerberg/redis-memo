@@ -22,17 +22,17 @@ class RedisMemo::Memoizable
   require_relative 'memoizable/dependency'
   require_relative 'memoizable/invalidation'
 
-  # prop values on the current memoizable
+  # @return [Hash] prop values on the current memoizable
   attr_accessor :props
 
-  # A dependency block representing other memoizables that this object depends on.
+  # @return [Proc] A proc representing other memoizables that this object depends on.
   attr_reader :depends_on
 
   # Creates a new +RedisMemo::Memoizable+ object.
   #
-  # @params props [Hash]
-  # @params depends_on [block] A dependency block representing other +RedisMemo::Memoizable+s
-  # that this object depends on.
+  # @param props [Hash]
+  # @yield depends_on A dependency block representing other +RedisMemo::Memoizable+s
+  #        that this object depends on.
   def initialize(**props, &depends_on)
     @props = props
     @depends_on = depends_on
