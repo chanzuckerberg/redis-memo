@@ -34,7 +34,7 @@ module RedisMemo::MemoizeQuery
   # will NOT be memoized with the given configuration.
   #
   # @param raw_columns [Array] A list of columns to memoize.
-  # @param ediable [Boolean] Specify if the column is editable. Only editable columns
+  # @param editable [Boolean] Specify if the column is editable. Only editable columns
   # will be used to create memos that are invalidatable after each record save.
   def memoize_table_column(*raw_columns, editable: true)
     RedisMemo::MemoizeQuery.__send__(:using_active_record!, self)
