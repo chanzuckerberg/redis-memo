@@ -10,7 +10,10 @@ module RedisMemo::MemoizeQuery
   require_relative 'memoize_query/model_callback'
 
   # Core entry method for using RedisMemo to cache SQL select queries on the given
-  # column names.
+  # column names. We intercept any ActiveRecord select queries and extract the
+  # column dependencies from SQL query parameters. From the extracted dependencies
+  # and the memoized columns on the table, we determine whether or not the query
+  # should be cached on RedisMemo. Learn more in +RedisMemo::MemoizeQuery::CachedSelect+.
   #
   #   class User < ApplicationRecord
   #     extend RedisMemo::MemoizeQuery
