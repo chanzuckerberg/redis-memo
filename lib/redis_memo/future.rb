@@ -34,7 +34,7 @@ class RedisMemo::Future
 
   def method_cache_key
     @method_cache_key ||=
-      RedisMemo::MemoizeMethod.method_cache_keys([context])&.first || ''
+      RedisMemo::MemoizeMethod.__send__(:method_cache_keys, [context])&.first || ''
   end
 
   def execute(cached_results = nil)

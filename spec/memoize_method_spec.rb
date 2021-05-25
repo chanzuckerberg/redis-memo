@@ -185,9 +185,9 @@ describe RedisMemo::MemoizeMethod do
     end
 
     method_context = [nil, nil, [], nil]
-    cache_key_a = RedisMemo::MemoizeMethod.method_cache_keys([method_context])
+    cache_key_a = RedisMemo::MemoizeMethod.__send__(:method_cache_keys, [method_context])
     global_cache_key_version = 2
-    cache_key_b = RedisMemo::MemoizeMethod.method_cache_keys([method_context])
+    cache_key_b = RedisMemo::MemoizeMethod.__send__(:method_cache_keys, [method_context])
     expect(cache_key_a).to_not eq(cache_key_b)
   end
 end

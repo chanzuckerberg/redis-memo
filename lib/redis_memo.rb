@@ -40,10 +40,10 @@ module RedisMemo
   # to Redis.
   # - Batches cannot be nested
   # - When a batch is still open (while still in the +RedisMemo.batch+ block)
-  # the return value of any memoized method is a +RedisMemo::Future+ instead of
-  # the actual method value
+  #   the return value of any memoized method is a +RedisMemo::Future+ instead of
+  #   the actual method value
   # - The actual method values are returned as a list, in the same order as
-  # invoking, after exiting the block
+  #   invoking, after exiting the block
   #
   # @example
   #   results = RedisMemo.batch do
