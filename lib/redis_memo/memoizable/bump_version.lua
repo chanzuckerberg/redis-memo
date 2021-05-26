@@ -10,6 +10,11 @@ if the current version still matches the expectation (in a Lua script to ensure 
 If not, we would use a different version that has not been used before, thus
 we have automatically invalidated the records that are being updated by overlapping
 transactions.
+
+Note: When Redis memory is full, bumping versions only works on Redis versions 6.x.
+Prior versions of Redis have a bug in Lua where an OOM error is thrown instead of
+eviction when Redis memory is full https://github.com/redis/redis/issues/6565
+
 --   KEYS = cache_key
 --   ARGV = [expected_prev_version desired_new_version version_on_mismatch ttl]
 --]]
