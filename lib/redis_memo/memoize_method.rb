@@ -37,13 +37,13 @@ module RedisMemo::MemoizeMethod
   #          using the +RedisMemo::Dependency.depends_on+ method. RedisMemo will automatically extract dependencies
   #          from this block and use them to compute a method's versioned cache key.
   def memoize_method(method_name, method_id: nil, **options, &depends_on)
-    method_name_without_memo = :"_redis_memo_#{method_name}_without_memo"
+    method_name_without_memoization = :"_redis_memo_#{method_name}_without_memoization"
     method_name_with_memo = :"_redis_memo_#{method_name}_with_memo"
 
-    alias_method method_name_without_memo, method_name
+    alias_method method_name_without_memoization, method_name
 
     define_method method_name_with_memo do |*args|
-      return __send__(method_name_without_memo, *args) if RedisMemo.without_memo?
+      return __send__(method_name_without_memoization, *args) if RedisMemo.without_memoization?
 
       dependent_memos = nil
       if depends_on
@@ -64,7 +64,7 @@ module RedisMemo::MemoizeMethod
         args,
         dependent_memos,
         options,
-        method_name_without_memo,
+        method_name_without_memoization,
       )
 
       if RedisMemo::Batch.current
@@ -74,7 +74,7 @@ module RedisMemo::MemoizeMethod
 
       future.execute
     rescue RedisMemo::WithoutMemoization
-      __send__(method_name_without_memo, *args)
+      __send__(method_name_without_memoization, *args)
     end
 
     ruby2_keywords method_name_with_memo

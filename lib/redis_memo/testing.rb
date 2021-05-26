@@ -37,7 +37,7 @@ module RedisMemo
   end
 
   module TestOverrides
-    def without_memo?
+    def without_memoization?
       if RedisMemo::Testing.enabled? && !RedisMemo::Memoizable::Invalidation.class_variable_get(:@@invalidation_queue).empty?
         return true
       end

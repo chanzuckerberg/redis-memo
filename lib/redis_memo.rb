@@ -9,7 +9,7 @@ require 'securerandom'
 module RedisMemo
   require 'redis_memo/thread_local_var'
 
-  ThreadLocalVar.define :without_memo
+  ThreadLocalVar.define :without_memoization
   ThreadLocalVar.define :connection_attempts_count
   ThreadLocalVar.define :max_connection_attempts
 
@@ -66,35 +66,35 @@ module RedisMemo
   # memoization and use the uncached code path.
   #
   # @return [Boolean]
-  def self.without_memo?
-    RedisMemo::DefaultOptions.disable_all || ThreadLocalVar.without_memo == true
+  def self.without_memoization?
+    RedisMemo::DefaultOptions.disable_all || ThreadLocalVar.without_memoization == true
   end
 
   # Configure the wrapped code in the block to skip memoization.
   #
   # @yield [] no_args The block of code to skip memoization.
-  def self.without_memo
-    prev_value = ThreadLocalVar.without_memo
-    ThreadLocalVar.without_memo = true
+  def self.without_memoization
+    prev_value = ThreadLocalVar.without_memoization
+    ThreadLocalVar.without_memoization = true
     yield
   ensure
-    ThreadLocalVar.without_memo = prev_value
+    ThreadLocalVar.without_memoization = prev_value
   end
 
   # Set the max connection attempts to Redis per code block. If we fail to
   # connect to Redis more than `max_attempts` times, the rest of the code block
-  # will fall back to the uncached flow, `RedisMemo.without_memo`.
+  # will fall back to the uncached flow, `RedisMemo.without_memoization`.
   #
   # @param [Integer] The max number of connection attempts.
   # @yield [] no_args the block of code to set the max attempts for.
   def self.with_max_connection_attempts(max_attempts)
-    prev_value = ThreadLocalVar.without_memo
+    prev_value = ThreadLocalVar.without_memoization
     ThreadLocalVar.connection_attempts_count = 0
     ThreadLocalVar.max_connection_attempts = max_attempts
 
     yield
   ensure
-    ThreadLocalVar.without_memo = prev_value
+    ThreadLocalVar.without_memoization = prev_value
     ThreadLocalVar.connection_attempts_count = nil
     ThreadLocalVar.max_connection_attempts = nil
   end
@@ -108,6 +108,6 @@ module RedisMemo
     return if ThreadLocalVar.connection_attempts_count <
               ThreadLocalVar.max_connection_attempts
 
-    ThreadLocalVar.without_memo = true
+    ThreadLocalVar.without_memoization = true
   end
 end

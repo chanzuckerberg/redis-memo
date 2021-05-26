@@ -247,7 +247,7 @@ class RedisMemo::MemoizeQuery::Invalidation
       'redis_memo.memoize_query.invalidation',
       "#{__method__}##{model_class.name}",
     ) do
-      RedisMemo.without_memo do
+      RedisMemo.without_memoization do
         model_class.where(
           model_class.arel_table[model_class.primary_key].gt(target_id),
         ).to_a
@@ -262,7 +262,7 @@ class RedisMemo::MemoizeQuery::Invalidation
       'redis_memo.memoize_query.invalidation',
       "#{__method__}##{model_class.name}",
     ) do
-      RedisMemo.without_memo { relation.reload }
+      RedisMemo.without_memoization { relation.reload }
     end
   end
 end
