@@ -39,12 +39,12 @@ class RedisMemo::Redis < Redis::Distributed
     begin
       script_sha = @@script_shas[script_content]
       return evalsha(script_sha, *args) if script_sha
-    rescue Redis::CommandError => e
-      if e.message != 'NOSCRIPT No matching script. Please use EVAL.'
-        raise e
+    rescue Redis::CommandError => error
+      if error.message != 'NOSCRIPT No matching script. Please use EVAL.'
+        raise error
       end
     end
-    res = eval(script_content, *args)
+    res = eval(script_content, *args) # rubocop: disable Security/Eval
     script_sha = Digest::SHA1.hexdigest(script_content)
     @@script_shas[script_content] = script_sha
     res

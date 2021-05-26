@@ -61,7 +61,7 @@ module RedisMemo::Memoizable::Invalidation
   end
 
   LUA_BUMP_VERSION = File.read(
-    File.join(File.dirname(__FILE__), "bump_version.lua"),
+    File.join(File.dirname(__FILE__), 'bump_version.lua'),
   )
   private_constant :LUA_BUMP_VERSION
 

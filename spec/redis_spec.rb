@@ -74,7 +74,7 @@ describe RedisMemo::Redis do
     expect(client).to receive(:eval).once.and_call_original
     expect(client).to receive(:evalsha).exactly(4).times
     5.times do
-      client.run_script(script, keys: ["cache_key"], argv: ["cache_value"])
+      client.run_script(script, keys: ['cache_key'], argv: ['cache_value'])
     end
   end
 end
