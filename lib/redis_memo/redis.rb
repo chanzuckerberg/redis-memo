@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'digest'
 require 'redis'
 require 'redis/distributed'
 
@@ -34,20 +33,15 @@ class RedisMemo::Redis < Redis::Distributed
     super([], ring: hash_ring)
   end
 
-  @@script_shas = {}
-  def run_script(script_content, *args)
+  def run_script(script_content, script_sha, *args)
     begin
-      script_sha = @@script_shas[script_content]
       return evalsha(script_sha, *args) if script_sha
     rescue Redis::CommandError => error
       if error.message != 'NOSCRIPT No matching script. Please use EVAL.'
         raise error
       end
     end
-    res = eval(script_content, *args) # rubocop: disable Security/Eval
-    script_sha = Digest::SHA1.hexdigest(script_content)
-    @@script_shas[script_content] = script_sha
-    res
+    eval(script_content, *args) # rubocop: disable Security/Eval
   end
 
   class WithReplicas < ::Redis

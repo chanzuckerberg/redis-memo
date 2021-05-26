@@ -1,6 +1,5 @@
 # typed: false
 describe RedisMemo::Redis do
-  let(:redis) { RedisMemo::Cache.redis }
 
   before(:each) do
     stub_const('FakeClient', Class.new do
@@ -68,13 +67,22 @@ describe RedisMemo::Redis do
 
   it 'calls evalsha after a script is already loaded' do
     client = RedisMemo::Redis.new
+    client.script(:flush)
     script = <<~LUA
       redis.call('set', KEYS[1], ARGV[1])
     LUA
+
+    # When the script sha isn't loaded on Redis, it should fall back to calling eval
+    script_sha = Digest::SHA1.hexdigest(script)
+    expect(client).to receive(:evalsha).once.and_call_original
     expect(client).to receive(:eval).once.and_call_original
-    expect(client).to receive(:evalsha).exactly(4).times
+    client.run_script(script, script_sha, keys: ['cache_key'], argv: ["cache_value"])
+
+    # Subsequent calls should use evalsha
     5.times do
-      client.run_script(script, keys: ['cache_key'], argv: ['cache_value'])
+      expect(client).to receive(:evalsha).and_call_original
+      expect(client).to_not receive(:eval)
+      client.run_script(script, script_sha, keys: ['cache_key'], argv: ["cache_value"])
     end
   end
 end

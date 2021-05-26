@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'digest'
 require_relative '../after_commit'
 require_relative '../cache'
 
@@ -125,15 +126,18 @@ module RedisMemo::Memoizable::Invalidation
       end
     end
 
+    @@bump_version_sha = nil
     def bump_version(task)
       RedisMemo::Tracer.trace('redis_memo.memoizable.bump_version', task.key) do
         ttl = RedisMemo::DefaultOptions.expires_in
         ttl = (ttl * 1000.0).to_i if ttl
         RedisMemo::Cache.redis.run_script(
           LUA_BUMP_VERSION,
+          @@bump_version_sha,
           keys: [task.key],
           argv: [task.previous_version, task.version, RedisMemo::Util.uuid, ttl],
         )
+        @@bump_version_sha = Digest::SHA1.hexdigest(LUA_BUMP_VERSION) unless @@bump_version_sha
         RedisMemo::Tracer.set_tag(enqueue_to_finish: task.duration)
       end
     end
