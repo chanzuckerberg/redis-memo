@@ -20,6 +20,9 @@ gemfile:
 matrix:
   allow_failures:
   - rvm: 3.0
+    gemfile: gemfiles/5.2.gemfile
+  - rvm: 3.0
+    gemfile: gemfiles/6.0.gemfile
   - rvm: ruby-head
 
 script:
