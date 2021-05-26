@@ -60,27 +60,9 @@ module RedisMemo::Memoizable::Invalidation
     end
   end
 
-  LUA_BUMP_VERSION = <<~LUA
-    local key = KEYS[1]
-    local expected_prev_version,
-          desired_new_version,
-          version_on_mismatch,
-          ttl = unpack(ARGV)
-
-    local actual_prev_version = redis.call('get', key)
-    local new_version = version_on_mismatch
-    local px = {}
-
-    if (not actual_prev_version and expected_prev_version == '') or expected_prev_version == actual_prev_version then
-      new_version = desired_new_version
-    end
-
-    if ttl ~= '' then
-      px = {'px', ttl}
-    end
-
-    return redis.call('set', key, new_version, unpack(px))
-  LUA
+  LUA_BUMP_VERSION = File.read(
+    File.join(File.dirname(__FILE__), "bump_version.lua"),
+  )
   private_constant :LUA_BUMP_VERSION
 
   # Drains the invalidation queue synchronously by bumping the versions of all
@@ -147,7 +129,7 @@ module RedisMemo::Memoizable::Invalidation
       RedisMemo::Tracer.trace('redis_memo.memoizable.bump_version', task.key) do
         ttl = RedisMemo::DefaultOptions.expires_in
         ttl = (ttl * 1000.0).to_i if ttl
-        RedisMemo::Cache.redis.eval(
+        RedisMemo::Cache.redis.run_script(
           LUA_BUMP_VERSION,
           keys: [task.key],
           argv: [task.previous_version, task.version, RedisMemo::Util.uuid, ttl],

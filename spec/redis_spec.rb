@@ -65,4 +65,16 @@ describe RedisMemo::Redis do
     client = RedisMemo::Redis::WithReplicas.new([{ db: 0 }])
     expect(client.mapped_mget('a').is_a?(Hash)).to be(true)
   end
+
+  it 'calls evalsha after a script is already loaded' do
+    client = RedisMemo::Redis.new
+    script = <<~LUA
+      redis.call('set', KEYS[1], ARGV[1])
+    LUA
+    expect(client).to receive(:eval).once.and_call_original
+    expect(client).to receive(:evalsha).exactly(4).times
+    5.times do
+      client.run_script(script, keys: ["cache_key"], argv: ["cache_value"])
+    end
+  end
 end

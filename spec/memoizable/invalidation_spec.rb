@@ -40,7 +40,7 @@ describe RedisMemo::Memoizable::Invalidation do
         @retry_count = 0
       end
 
-      def eval(*)
+      def run_script(*)
         return unless @retry_count < 3
 
         @retry_count += 1
@@ -74,7 +74,7 @@ describe RedisMemo::Memoizable::Invalidation do
     klass = Class.new do
       attr_accessor :done
 
-      def eval(*)
+      def run_script(*)
         sleep(1) until @done
       end
 
