@@ -116,7 +116,7 @@ describe RedisMemo::MemoizeQuery do
 
   def expect_to_eq_with_or_without_redis
     expect_to_use_redis do
-      expect(yield).to eq(RedisMemo.without_memo { yield })
+      expect(yield).to eq(RedisMemo.without_memoization { yield })
     end
   end
 

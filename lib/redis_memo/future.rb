@@ -12,14 +12,14 @@ class RedisMemo::Future
     method_args,
     dependent_memos,
     cache_options,
-    method_name_without_memo
+    method_name_without_memoization
   )
     @ref = ref
     @method_id = method_id
     @method_args = method_args
     @dependent_memos = dependent_memos
     @cache_options = cache_options
-    @method_name_without_memo = method_name_without_memo
+    @method_name_without_memoization = method_name_without_memoization
     @method_cache_key = nil
     @cache_hit = false
     @cached_result = nil
@@ -103,7 +103,7 @@ class RedisMemo::Future
 
     RedisMemo::Tracer.trace('redis_memo.cache.write', @method_id) do
       # cache miss
-      @fresh_result = @ref.__send__(@method_name_without_memo, *@method_args)
+      @fresh_result = @ref.__send__(@method_name_without_memoization, *@method_args)
       if @cache_options.include?(:expires_in) && @cache_options[:expires_in].respond_to?(:call)
         @cache_options[:expires_in] = @cache_options[:expires_in].call(@fresh_result)
       end

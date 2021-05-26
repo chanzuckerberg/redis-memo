@@ -26,10 +26,10 @@ describe RedisMemo::MemoizeMethod do
     allow(default_hash).to receive(:include?).and_return(true)
     allow(RedisMemo::Cache).to receive(:read_multi) { default_hash }
 
-    expect(klass.new._redis_memo_a_without_memo).to be 1
-    expect(klass._redis_memo_b_without_memo).to be 2
+    expect(klass.new._redis_memo_a_without_memoization).to be 1
+    expect(klass._redis_memo_b_without_memoization).to be 2
 
-    RedisMemo.without_memo do
+    RedisMemo.without_memoization do
       expect(klass.new.a).to be 1
       expect(klass.b).to be 2
     end

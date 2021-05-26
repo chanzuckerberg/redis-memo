@@ -13,7 +13,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
     ruby2_keywords def exec_query(*args)
       # An Arel AST in Thread local is set prior to supported query methods
-      if !RedisMemo.without_memo? &&
+      if !RedisMemo.without_memoization? &&
           RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(args[0])
         # [Reids $model Load] $sql $binds
         RedisMemo::DefaultOptions.logger&.info(
@@ -24,7 +24,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
         super(*args)
       else
-        RedisMemo.without_memo { super(*args) }
+        RedisMemo.without_memoization { super(*args) }
       end
     end
 
