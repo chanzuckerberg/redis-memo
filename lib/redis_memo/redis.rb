@@ -33,6 +33,17 @@ class RedisMemo::Redis < Redis::Distributed
     super([], ring: hash_ring)
   end
 
+  def run_script(script_content, script_sha, *args)
+    begin
+      return evalsha(script_sha, *args) if script_sha
+    rescue Redis::CommandError => error
+      if error.message != 'NOSCRIPT No matching script. Please use EVAL.'
+        raise error
+      end
+    end
+    eval(script_content, *args) # rubocop: disable Security/Eval
+  end
+
   class WithReplicas < ::Redis
     def initialize(orig_options)
       options = orig_options.dup

@@ -12,7 +12,7 @@ class RedisMemo::ConnectionPool
   end
 
   # Avoid method_missing when possible for better performance
-  %i[get mget mapped_mget set eval].each do |method_name|
+  %i[get mget mapped_mget set eval evalsha run_script].each do |method_name|
     define_method method_name do |*args, &blk|
       @connection_pool.with do |redis|
         redis.__send__(method_name, *args, &blk)

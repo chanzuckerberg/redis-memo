@@ -50,7 +50,7 @@ describe RedisMemo::AfterCommit do
       method.call(*args)
     end
 
-    allow(RedisMemo::Cache.redis).to receive(:eval).and_wrap_original do |method, *args|
+    allow(RedisMemo::Cache.redis).to receive(:run_script).and_wrap_original do |method, *args|
       redis_stats[:invalidation_count] += 1
       method.call(*args)
     end
