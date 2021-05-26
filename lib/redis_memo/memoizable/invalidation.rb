@@ -137,7 +137,7 @@ module RedisMemo::Memoizable::Invalidation
           keys: [task.key],
           argv: [task.previous_version, task.version, RedisMemo::Util.uuid, ttl],
         )
-        @@bump_version_sha = Digest::SHA1.hexdigest(LUA_BUMP_VERSION) unless @@bump_version_sha
+        @@bump_version_sha ||= Digest::SHA1.hexdigest(LUA_BUMP_VERSION)
         RedisMemo::Tracer.set_tag(enqueue_to_finish: task.duration)
       end
     end

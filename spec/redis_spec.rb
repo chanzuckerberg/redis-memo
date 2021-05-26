@@ -1,6 +1,5 @@
 # typed: false
 describe RedisMemo::Redis do
-
   before(:each) do
     stub_const('FakeClient', Class.new do
       attr_reader :id
@@ -76,13 +75,13 @@ describe RedisMemo::Redis do
     script_sha = Digest::SHA1.hexdigest(script)
     expect(client).to receive(:evalsha).once.and_call_original
     expect(client).to receive(:eval).once.and_call_original
-    client.run_script(script, script_sha, keys: ['cache_key'], argv: ["cache_value"])
+    client.run_script(script, script_sha, keys: ['cache_key'], argv: ['cache_value'])
 
     # Subsequent calls should use evalsha
     5.times do
       expect(client).to receive(:evalsha).and_call_original
       expect(client).to_not receive(:eval)
-      client.run_script(script, script_sha, keys: ['cache_key'], argv: ["cache_value"])
+      client.run_script(script, script_sha, keys: ['cache_key'], argv: ['cache_value'])
     end
   end
 end
