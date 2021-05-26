@@ -16,7 +16,8 @@ teachers.map(&:site) # no additional queries!
 Simply adding a `cached_where` would bypass this optimization. 
 
 ## Association Scope
-With ActiveRecord, one could have associations with a scope as follow:
+With ActiveRecord, one could have associations with a scope as follows:
+
 ```ruby
 belongs_to :local_site, -> { where(location: ...) }
 ```
