@@ -26,16 +26,18 @@ describe RedisMemo::Options do
       }.to change { count }.by(updated_value)
     end
 
-    def expect_count_to_change
+    def expect_cache_validation
+      # With cache validation, the count will change by 1
       expect_count(0, 1)
     end
 
-    def expect_count_not_to_change
+    def expect_no_cache_validation
+      # Without cache validation, the count will not change
       expect_count(0, 0)
     end
 
     context 'with only global cache validation sample percentage' do
-      def allow_cache_validation_sample_percentage(value)
+      def set_cache_validation_sample_percentage(value)
         allow(RedisMemo::DefaultOptions).to receive(:cache_validation_sample_percentage).and_return(value)
       end
 
@@ -54,9 +56,9 @@ describe RedisMemo::Options do
 
       context 'cache validation sample percentage is 100' do
         it 'validates the cache result' do
-          allow_cache_validation_sample_percentage(100)
+          set_cache_validation_sample_percentage(100)
 
-          expect_count_to_change
+          expect_cache_validation
         end
       end
 
@@ -65,26 +67,26 @@ describe RedisMemo::Options do
           cache_validation_sample_percentage = 60
           rand_value = cache_validation_sample_percentage - 10
 
-          allow_cache_validation_sample_percentage(cache_validation_sample_percentage)
+          set_cache_validation_sample_percentage(cache_validation_sample_percentage)
           allow_rand_return(rand_value)
 
-          expect_count_to_change
+          expect_cache_validation
         end
 
         it 'does not validate the cache result if generating a higher random value' do
           cache_validation_sample_percentage = 60
           rand_value = cache_validation_sample_percentage + 10
 
-          allow_cache_validation_sample_percentage(cache_validation_sample_percentage)
+          set_cache_validation_sample_percentage(cache_validation_sample_percentage)
           allow_rand_return(rand_value)
 
-          expect_count_not_to_change
+          expect_no_cache_validation
         end
 
         it 'does not validate the cache result if cache alidation sample percentage is 0' do
-          allow_cache_validation_sample_percentage(0)
+          set_cache_validation_sample_percentage(0)
 
-          expect_count_not_to_change
+          expect_no_cache_validation
         end
       end
     end
@@ -109,7 +111,7 @@ describe RedisMemo::Options do
 
         it 'validates the results' do
           expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
-          expect_count_to_change
+          expect_cache_validation
         end
       end
 
@@ -123,7 +125,7 @@ describe RedisMemo::Options do
           allow_rand_return(rand_value)
 
           expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
-          expect_count_to_change
+          expect_cache_validation
         end
 
         it 'does not validate the cache result if generating a higher random value' do
@@ -132,7 +134,7 @@ describe RedisMemo::Options do
           allow_rand_return(rand_value)
 
           expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
-          expect_count_not_to_change
+          expect_no_cache_validation
         end
       end
 
@@ -140,7 +142,7 @@ describe RedisMemo::Options do
         let!(:klass) { klass_with_cache_validation_sample_percentage(0) }
         it 'does not validate the cache result' do
           expect_any_instance_of(RedisMemo::Future).to receive(:validate_cache_result).and_call_original
-          expect_count_not_to_change
+          expect_no_cache_validation
         end
       end
     end
