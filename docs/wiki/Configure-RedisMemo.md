@@ -17,6 +17,23 @@ RedisMemo has built-in cache sampling logic. An error reporter will be invoked i
 
 We highly recommend sampling at least 1% of the cached methods in production. When rolling out a new cached code path, one could start with a 100% cache sample rate until they feel confident enough to reduce the sample rate.
 
+You can configure the cache sample validation percentage both globally or in inline method:
+
+1. To specify global validation percentage:
+    ```ruby
+    RedisMemo.configure do |config|
+
+      config.cache_validation_sample_percentage = 100
+      ...
+    end
+    ```
+
+2. To specify validation percentage in inline method:
+    ```ruby
+    memoize_method :load cache_validation_sample_percentage: 100
+    ```
+
+
 ### Kill switches
 
 Cached queries can be disabled per model by setting an ENV variable `REDIS_MEMO_DISABLE_<table name>`. RedisMemo can be turned off globally when `REDIS_MEMO_DISABLE_ALL` is set to true.
