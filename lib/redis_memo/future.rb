@@ -39,7 +39,7 @@ class RedisMemo::Future
 
   def validate_cache_result
     cache_validation_sample_percentage =
-      @cache_options[:cache_validation_sample_percentage]&.to_i || RedisMemo::DefaultOptions.cache_validation_sample_percentage&.to_i
+      @cache_options[:cache_validation_sample_percentage] || RedisMemo::DefaultOptions.cache_validation_sample_percentage
 
     if cache_validation_sample_percentage.nil?
       false
