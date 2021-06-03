@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-#
+##
 # Inspect a SQL's AST to memoize SELECT statements
 #
 # As Rails applies additional logic on top of the rows returned from the
@@ -99,6 +99,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   RedisMemo::ThreadLocalVar.define :substitues
   RedisMemo::ThreadLocalVar.define :arel_bind_params
 
+  # @return [Hash] models enabled for caching
   def self.enabled_models
     @@enabled_models
   end
@@ -113,8 +114,10 @@ class RedisMemo::MemoizeQuery::CachedSelect
       memoize_method(
         :exec_query,
         method_id: proc do |_, sql, *_args|
-          sql.gsub(/(\$\d+)/, '?')      # $1 -> ?
-             .gsub(/((, *)*\?)+/, '?')  # (?, ?, ? ...) -> (?)
+          # replace $1 with ?,
+          # and (?, ?, ? ...) with (?)
+          sql.gsub(/(\$\d+)/, '?')
+             .gsub(/((, *)*\?)+/, '?')
         end,
       ) do |_, sql, _, binds, **|
         depends_on RedisMemo::MemoizeQuery::CachedSelect.current_query_bind_params
@@ -157,6 +160,12 @@ class RedisMemo::MemoizeQuery::CachedSelect
     end
   end
 
+  # Extract bind params from the query by inspecting the SQL's AST recursively
+  # The bind params will be passed into the local thread variables
+  # See +extract_bind_params_recurse+ for how to extract binding params recursively
+  #
+  # @param sql [String] SQL query
+  # @return [Boolean] indicating whether a query should be cached
   def self.extract_bind_params(sql)
     ast = RedisMemo::ThreadLocalVar.arel&.ast
     return false unless ast.is_a?(Arel::Nodes::SelectStatement)
@@ -209,6 +218,10 @@ class RedisMemo::MemoizeQuery::CachedSelect
   #
   # Note: Arel::Nodes#each returns a list in post-order, and it does not step
   # into Union nodes. So we're implementing our own DFS
+  #
+  # @param node [Arel::Nodes::Node]
+  #
+  # @return [RedisMemo::MemoizeQuery::CachedSelect::BindParams]
   def self.extract_bind_params_recurse(node)
     # rubocop: disable Lint/NonLocalExitFromIterator
     bind_params = BindParams.new
@@ -343,10 +356,19 @@ class RedisMemo::MemoizeQuery::CachedSelect
     # rubocop: enable Lint/NonLocalExitFromIterator
   end
 
+  # Retrieve the model info from the table node
+  # table node is an Arel::Table object, e.g. <Arel::Table @name="sites" ...>
+  # and we can retrieve the model info by inspecting thhe table name
+  # See +RedisMemo::MemoizeQuery::memoize_table_column+ for how to construct enabled_models
+  #
+  # @params table_node [Arel::Table]
   def self.extract_binding_relation(table_node)
     enabled_models[table_node.try(:name)]
   end
 
+  #
+  # Identify whether the node has filter condition
+  #
   class NodeHasFilterCondition
     def self.===(node)
       case node
