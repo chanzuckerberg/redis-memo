@@ -1,3 +1,7 @@
+### A Real Example
+
+https://github.com/chanzuckerberg/redis-memo/blob/main/docs/examples/config.rb
+
 ### Options
 You can configure and set various RedisMemo options in your initializer `config/initializers/redis_memo.rb`:
 ```ruby
@@ -20,18 +24,17 @@ We highly recommend sampling at least 1% of the cached methods in production. Wh
 You can configure the cache sample validation percentage both globally or in inline method:
 
 1. To specify global validation percentage:
-    ```ruby
-    RedisMemo.configure do |config|
-
-      config.cache_validation_sample_percentage = 100
-      ...
-    end
-    ```
+```ruby
+RedisMemo.configure do |config|
+  config.cache_validation_sample_percentage = 100
+  ...
+end
+```
 
 2. To specify validation percentage in inline method:
-    ```ruby
-    memoize_method :load cache_validation_sample_percentage: 100
-    ```
+```ruby
+memoize_method :load, cache_validation_sample_percentage: 100
+```
 
 
 ### Kill switches
