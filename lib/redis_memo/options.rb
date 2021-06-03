@@ -133,12 +133,14 @@ class RedisMemo::Options
   attr_accessor :async
 
   # Handler called when the cached result does not match the uncached result (sampled at the
-  # `cache_validation_sample_rate`). This might indicate that invalidation is happening too slowly or
+  # `cache_validation_sample_percentage`). This might indicate that invalidation is happening too slowly or
   # that there are incorrect dependencies specified on a cached method.
   attr_accessor :cache_out_of_date_handler
 
-  # TODO: Remove and replace with cache_validation_sample_rate
-  attr_accessor :cache_validation_sampler
+  # Specify the global sampled percentage of the chance to call the cache validation, a value between 0 to 100, when the value
+  # is 100, it will call the handler every time the cached result does not match the uncached result
+  # You can also specify inline cache validation sample percentage by memoize_method :method, cache_validation_sample_percentage: #{value}
+  attr_accessor :cache_validation_sample_percentage
 
   # Passed along to the Rails {RedisCacheStore}[https://api.rubyonrails.org/classes/ActiveSupport/Cache/RedisCacheStore.html], determines whether or not to compress entries before storing
   # them. default: `true`

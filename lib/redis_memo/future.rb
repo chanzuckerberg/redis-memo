@@ -37,15 +37,23 @@ class RedisMemo::Future
       RedisMemo::MemoizeMethod.__send__(:method_cache_keys, [context])&.first || ''
   end
 
+  def validate_cache_result
+    cache_validation_sample_percentage =
+      @cache_options[:cache_validation_sample_percentage] || RedisMemo::DefaultOptions.cache_validation_sample_percentage
+
+    if cache_validation_sample_percentage.nil?
+      false
+    else
+      cache_validation_sample_percentage > Random.rand(0...100)
+    end
+  end
+
   def execute(cached_results = nil)
     if RedisMemo::Batch.current
       raise RedisMemo::RuntimeError.new('Cannot execute future when a batch is still open')
     end
 
     if cache_hit?(cached_results)
-      validate_cache_result =
-        RedisMemo::DefaultOptions.cache_validation_sampler&.call(@method_id)
-
       if validate_cache_result && cached_result != fresh_result
         RedisMemo::DefaultOptions.cache_out_of_date_handler&.call(
           @ref,
