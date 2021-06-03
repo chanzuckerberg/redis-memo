@@ -2,7 +2,7 @@
 
 Gem::Specification.new do |s|
   s.name          = 'redis-memo'
-  s.version       = '0.1.4'
+  s.version       = '1.0.0'
   s.date          = '2020-10-31'
   s.summary       = 'A Redis-based version-addressable caching system. Memoize pure functions, aggregated database queries, and 3rd party API calls.'
   s.authors       = ['Chan Zuckerberg Initiative']
