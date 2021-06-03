@@ -13,4 +13,10 @@ describe RedisMemo::Railtie do
     Rails.application.initialize!
     expect(Rails.application.middleware.include?(RedisMemo::Middleware)).to eq(true)
   end
+
+  it 'drains the invalidation queue after each request' do
+    expect(RedisMemo::Memoizable::Invalidation).to receive(:drain_invalidation_queue).once
+    request = Rack::MockRequest.new(RedisMemo::Middleware.new(TestApplication.new))
+    request.post('/fake-path')
+  end
 end

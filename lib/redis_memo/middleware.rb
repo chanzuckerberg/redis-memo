@@ -9,7 +9,7 @@ class RedisMemo::Middleware
     result = nil
 
     RedisMemo::Cache.with_local_cache do
-      RedisMemo.with_max_connection_attempts(RedisMemo::Options.max_connection_attempts) do
+      RedisMemo.with_max_connection_attempts(RedisMemo::DefaultOptions.max_connection_attempts) do
         result = @app.call(env)
       end
     end
