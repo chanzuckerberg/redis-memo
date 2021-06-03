@@ -42,7 +42,7 @@ describe RedisMemo::Options do
       end
 
       let!(:klass) do
-        klass = Class.new do
+        Class.new do
           extend RedisMemo::MemoizeMethod
           attr_accessor :count
 
