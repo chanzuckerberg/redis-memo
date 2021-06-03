@@ -99,7 +99,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   RedisMemo::ThreadLocalVar.define :substitues
   RedisMemo::ThreadLocalVar.define :arel_bind_params
 
-  # @return [Hash] caching enabled models
+  # @return [Hash] models enabled for caching
   def self.enabled_models
     @@enabled_models
   end
@@ -161,10 +161,11 @@ class RedisMemo::MemoizeQuery::CachedSelect
   end
 
   # Extract bind params from the query by inspecting the SQL's AST recursively
+  # The bind params will be passed into the local thread variables
   # See +extract_bind_params_recurse+ for how to extract binding params recursively
   #
   # @param sql [String] SQL query
-  # @return [Boolean]
+  # @return [Boolean] indicating whether a query should be cached
   def self.extract_bind_params(sql)
     ast = RedisMemo::ThreadLocalVar.arel&.ast
     return false unless ast.is_a?(Arel::Nodes::SelectStatement)
