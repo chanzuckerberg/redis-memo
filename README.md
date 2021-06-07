@@ -12,6 +12,7 @@
 # -- Gemfile --
 gem 'redis-memo'
 ```
+:warning: **Required Redis Version:** >= 6.0.0 ([reference](https://github.com/chanzuckerberg/redis-memo/blob/91ec911766ad072b1e003f695c35594bb31f0e67/lib/redis_memo/memoizable/bump_version.lua#L14-L16))
 ## Usage
 ### Cache simple ActiveRecord queries
 In the `User` model:
