@@ -167,20 +167,20 @@ class RedisMemo::MemoizeQuery::CachedSelect
   # @param sql [String] SQL query
   # @return [Boolean] indicating whether a query should be cached
   def self.extract_bind_params(sql)
-    ast = RedisMemo::ThreadLocalVar.arel&.ast
-    return false unless ast.is_a?(Arel::Nodes::SelectStatement)
-    return false unless ast.to_sql == sql
+    RedisMemo::Tracer.trace('redis_memo.memoize_query.extract_bind_params', nil) do
+      ast = RedisMemo::ThreadLocalVar.arel&.ast
+      return false unless ast.is_a?(Arel::Nodes::SelectStatement)
+      return false unless ast.to_sql == sql
 
-    RedisMemo::ThreadLocalVar.substitues ||= {}
-    # Iterate through the Arel AST in a Depth First Search
-    bind_params = extract_bind_params_recurse(ast)
-    return false unless bind_params
+      RedisMemo::ThreadLocalVar.substitues ||= {}
+      # Iterate through the Arel AST in a Depth First Search
+      bind_params = extract_bind_params_recurse(ast)
+      return false unless bind_params&.should_cache?
 
-    bind_params.uniq!
-    return false unless bind_params.memoizable?
-
-    RedisMemo::ThreadLocalVar.arel_bind_params = bind_params
-    true
+      bind_params.extract!
+      RedisMemo::ThreadLocalVar.arel_bind_params = bind_params
+      true
+    end
   end
 
   def self.current_query_bind_params
@@ -318,9 +318,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
           return unless bind_params
         end
-
-        # Reject any unbound select queries
-        return if binding_relation && bind_params.params[binding_relation].empty?
       end
 
       bind_params
