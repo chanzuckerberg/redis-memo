@@ -85,6 +85,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
       left.merge(right) do |_, attrs_set, other_attrs_set|
         next attrs_set if other_attrs_set.empty?
         next other_attrs_set if attrs_set.empty?
+
         attrs_set + other_attrs_set
       end
     end
