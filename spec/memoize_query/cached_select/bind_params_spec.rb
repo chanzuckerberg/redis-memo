@@ -47,7 +47,7 @@ RSpec.describe RedisMemo::MemoizeQuery::CachedSelect::BindParams do
         true
       end
     end
-    allow(RedisMemo::DefaultOptions).to receive(:max_query_dependency_size).and_return(100)
+    allow(RedisMemo::DefaultOptions).to receive(:max_query_dependency_size).and_return(99)
     allow(RedisMemo::MemoizeQuery).to receive(:memoized_columns).with(anything).and_return(fake_colums)
 
     left = described_class.new
@@ -59,11 +59,19 @@ RSpec.describe RedisMemo::MemoizeQuery::CachedSelect::BindParams do
     bp = left.product(right)
     expect(bp.should_cache?).to eq(true)
 
-    (2..11).each do |i|
+    (2..10).each do |i|
       left.params[1] << { a: i }
       right.params[1] << { b: i }
     end
 
+    expect(bp.should_cache?).to eq(false)
+
+    allow(RedisMemo::DefaultOptions).to receive(:max_query_dependency_size).and_return(1)
+    left = described_class.new
+    left.params[0] << { a: 1 }
+    right = described_class.new
+    right.params[1] << { b: 1 }
+    bp = left.product(right)
     expect(bp.should_cache?).to eq(false)
   end
 

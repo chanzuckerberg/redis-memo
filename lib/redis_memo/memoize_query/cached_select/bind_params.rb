@@ -23,7 +23,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
     def should_cache?
       plan!
 
-      if plan.model_attrs.empty? || plan.dependency_size > RedisMemo::DefaultOptions.max_query_dependency_size
+      if plan.model_attrs.empty? || plan.dependency_size_estimation.to_i > RedisMemo::DefaultOptions.max_query_dependency_size
         return false
       end
 
@@ -100,11 +100,59 @@ class RedisMemo::MemoizeQuery::CachedSelect
     #   {a:[1,2], b:[1,2]} x {a: [1,2,3]: b: [1,2,3]} => [{a: 1, b: 1}, ...]
     #
     class Plan
-      attr_accessor :dependency_size
+      class DependencySizeEstimation
+        def initialize(hash = nil)
+          @hash = hash
+        end
+
+        def +(other)
+          merged_hash = hash.dup
+          other.hash.each do |k, v|
+            merged_hash[k] += v
+          end
+          self.class.new(merged_hash)
+        end
+
+        def *(other)
+          merged_hash = hash.dup
+          other.hash.each do |k, v|
+            if merged_hash.include?(k)
+              merged_hash[k] *= v
+            else
+              merged_hash[k] = v
+            end
+          end
+          self.class.new(merged_hash)
+        end
+
+        def [](key)
+          hash[key]
+        end
+
+        def []=(key, val)
+          hash[key] = val
+        end
+
+        def to_i
+          ret = 0
+          hash.each do |_, v|
+            ret += v
+          end
+          ret
+        end
+
+        protected
+
+        def hash
+          @hash ||= Hash.new(0)
+        end
+      end
+
+      attr_accessor :dependency_size_estimation
       attr_accessor :model_attrs
 
       def initialize(bind_params)
-        @dependency_size = 0
+        @dependency_size_estimation = DependencySizeEstimation.new
         @model_attrs = Hash.new do |models, model|
           models[model] = Set.new
         end
@@ -114,7 +162,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
         return if !bind_params.__send__(:operator).nil?
 
         bind_params.params.each do |model, attrs_set|
-          @dependency_size += attrs_set.size
+          @dependency_size_estimation[model] += attrs_set.size
           attrs_set.each do |attrs|
             # [k, nil]: Ignore the attr value and keep the name only
             @model_attrs[model] << attrs.keys.map { |k| [k, nil] }.to_h
@@ -135,12 +183,12 @@ class RedisMemo::MemoizeQuery::CachedSelect
     end
 
     def plan_union
-      plan.dependency_size = left.plan.dependency_size + right.plan.dependency_size
+      plan.dependency_size_estimation = left.plan.dependency_size_estimation + right.plan.dependency_size_estimation
       plan.model_attrs = union_attrs_set(left.plan.model_attrs, right.plan.model_attrs)
     end
 
     def plan_product
-      plan.dependency_size = left.plan.dependency_size * right.plan.dependency_size
+      plan.dependency_size_estimation = left.plan.dependency_size_estimation * right.plan.dependency_size_estimation
       plan.model_attrs = product_attrs_set(left.plan.model_attrs, right.plan.model_attrs)
     end
 
