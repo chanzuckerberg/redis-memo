@@ -71,8 +71,8 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
     # BindParams is built recursively when iterating through the Arel AST
     # nodes. BindParams represents a binary tree. Query parameters are added to
-    # the leaf nodes or the tree, and the leaf nodes are connected by
-    # operators, such as `union` (or condition) or `product` (and condition).
+    # the leaf nodes of the tree, and the leaf nodes are connected by
+    # operators, such as `union` (or conditions) or `product` (and conditions).
     attr_accessor :left
     attr_accessor :right
     attr_accessor :operator
@@ -89,17 +89,16 @@ class RedisMemo::MemoizeQuery::CachedSelect
     # for each set of dependencies without populating their actual values.
     #
     # For example, in the planning phase,
-    # ```ruby
-    # {a:nil} x {b: nil} => {a: nil, b: nil}
-    # {a:nil, b:nil} x {a: nil: b: nil} => {a: nil, b: nil}
-    # ```
+    #
+    #   {a:nil} x {b: nil} => {a: nil, b: nil}
+    #   {a:nil, b:nil} x {a: nil: b: nil} => {a: nil, b: nil}
     #
     # and in the extraction phase, that's where the # of dependency can
     # actually grow significantly:
-    # ```ruby
-    # {a: [1,2,3]} x {b: [1,2,3]} => [{a: 1, b: 1}, ....]
-    # {a:[1,2], b:[1,2]} x {a: [1,2,3]: b: [1,2,3]} => [{a: 1, b: 1}]
-    # ```
+    #
+    #   {a: [1,2,3]} x {b: [1,2,3]} => [{a: 1, b: 1}, ....]
+    #   {a:[1,2], b:[1,2]} x {a: [1,2,3]: b: [1,2,3]} => [{a: 1, b: 1}, ...]
+    #
     class Plan
       attr_accessor :dependency_size
       attr_accessor :model_attrs
