@@ -2,11 +2,10 @@
 
 class RedisMemo::MemoizeQuery::CachedSelect
   class BindParams
-    def initialize(left = nil, right = nil, opt = nil)
+    def initialize(left = nil, right = nil, operator = nil)
       @left = left
       @right = right
-      @opt = opt
-      @plan = nil
+      @operator = operator
     end
 
     def union(other)
@@ -23,7 +22,10 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
     def should_cache?
       plan!
-      return false if plan.dependency_size > RedisMemo::DefaultOptions.max_query_dependency_size
+
+      if plan.model_attrs.empty? || plan.dependency_size > RedisMemo::DefaultOptions.max_query_dependency_size
+        return false
+      end
 
       plan.model_attrs.each do |model, attrs_set|
         return false if attrs_set.empty?
@@ -35,16 +37,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
         end
       end
 
-      !plan.model_attrs.empty?
-    end
-
-    def plan!
-      self.plan = Plan.new(self)
-      return if opt.nil?
-
-      left.plan!
-      right.plan!
-      __send__(:"plan_#{opt}")
+      true
     end
 
     #
@@ -61,11 +54,11 @@ class RedisMemo::MemoizeQuery::CachedSelect
     #   }
     #
     def extract!
-      return if opt.nil?
+      return if operator.nil?
 
       left.extract!
       right.extract!
-      __send__(:"#{opt}!")
+      __send__(:"#{operator}!")
     end
 
     def params
@@ -76,10 +69,89 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
     protected
 
+    # BindParams is built recursively when iterating through the Arel AST
+    # nodes. BindParams represents a binary tree. Query parameters are added to
+    # the leaf nodes or the tree, and the leaf nodes are connected by
+    # operators, such as `union` (or condition) or `product` (and condition).
     attr_accessor :left
     attr_accessor :right
-    attr_accessor :opt
+    attr_accessor :operator
+
+    # Prior to actually extracting the bind parameters, we first quickly
+    # estimate if it makes sense to do so. If a query contains too many
+    # dependencies, or contains dependencies that have not been memoized, then
+    # the query itself cannot be cached correctly/efficiently, so there’s no
+    # point to actually extract.
+    #
+    # The planning phase is similar to the extraction phase. Though in the
+    # planning phase, we can ignore all the actual attribute values and only
+    # look at the attribute names. This way, we can compute the attribute names
+    # for each set of dependencies without populating their actual values.
+    #
+    # For example, in the planning phase,
+    # ```ruby
+    # {a:nil} x {b: nil} => {a: nil, b: nil}
+    # {a:nil, b:nil} x {a: nil: b: nil} => {a: nil, b: nil}
+    # ```
+    #
+    # and in the extraction phase, that's where the # of dependency can
+    # actually grow significantly:
+    # ```ruby
+    # {a: [1,2,3]} x {b: [1,2,3]} => [{a: 1, b: 1}, ....]
+    # {a:[1,2], b:[1,2]} x {a: [1,2,3]: b: [1,2,3]} => [{a: 1, b: 1}]
+    # ```
+    class Plan
+      attr_accessor :dependency_size
+      attr_accessor :model_attrs
+
+      def initialize(bind_params)
+        @dependency_size = 0
+        @model_attrs = Hash.new do |models, model|
+          models[model] = Set.new
+        end
+
+        # An aggregated bind_params node can only obtain params by combining
+        # its children nodes
+        return if !bind_params.__send__(:operator).nil?
+
+        bind_params.params.each do |model, attrs_set|
+          @dependency_size += attrs_set.size
+          attrs_set.each do |attrs|
+            # [k, nil]: Ignore the attr value and keep the name only
+            @model_attrs[model] << attrs.keys.map { |k| [k, nil] }.to_h
+          end
+        end
+      end
+    end
+
     attr_accessor :plan
+
+    def plan!
+      self.plan = Plan.new(self)
+      return if operator.nil?
+
+      left.plan!
+      right.plan!
+      __send__(:"plan_#{operator}")
+    end
+
+    def plan_union
+      plan.dependency_size = left.plan.dependency_size + right.plan.dependency_size
+      plan.model_attrs = union_attrs_set(left.plan.model_attrs, right.plan.model_attrs)
+    end
+
+    def plan_product
+      plan.dependency_size = left.plan.dependency_size * right.plan.dependency_size
+      plan.model_attrs = product_attrs_set(left.plan.model_attrs, right.plan.model_attrs)
+    end
+
+    def union!
+      @params = union_attrs_set(left.params, right.params)
+    end
+
+    def product!
+      @params = product_attrs_set(left.params, right.params)
+    end
 
     def union_attrs_set(left, right)
       left.merge(right) do |_, attrs_set, other_attrs_set|
@@ -88,15 +160,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
         attrs_set + other_attrs_set
       end
-    end
-
-    def plan_union
-      plan.dependency_size = left.plan.dependency_size + right.plan.dependency_size
-      plan.model_attrs = union_attrs_set(left.plan.model_attrs, right.plan.model_attrs)
-    end
-
-    def union!
-      @params = union_attrs_set(left.params, right.params)
     end
 
     def product_attrs_set(left, right)
@@ -124,58 +187,26 @@ class RedisMemo::MemoizeQuery::CachedSelect
         attrs_set.each do |attrs|
           other_attrs_set.each do |other_attrs|
             merged_attrs = other_attrs.dup
-            should_add = true
+            should_add_attrs = true
             attrs.each do |name, val|
-              # conflict detected. for example:
+              # Conflict detected. For example:
               #
               #   (a = 1 or b = 1) and (a = 2 or b = 2)
               #
-              #  keep:     a = 1 and b = 2, a = 2 and b = 1
-              #  discard:  a = 1 and a = 2, b = 1 and b = 2
+              #  Keep:     a = 1 and b = 2, a = 2 and b = 1
+              #  Discard:  a = 1 and a = 2, b = 1 and b = 2
               if merged_attrs.include?(name) && merged_attrs[name] != val
-                should_add = false
+                should_add_attrs = false
                 break
               end
 
               merged_attrs[name] = val
             end
-            merged_attrs_set << merged_attrs if should_add
+            merged_attrs_set << merged_attrs if should_add_attrs
           end
         end
 
         merged_attrs_set
-      end
-    end
-
-    def plan_product
-      plan.dependency_size = left.plan.dependency_size * right.plan.dependency_size
-      plan.model_attrs = product_attrs_set(left.plan.model_attrs, right.plan.model_attrs)
-    end
-
-    def product!
-      @params = product_attrs_set(left.params, right.params)
-    end
-
-    class Plan
-      attr_accessor :dependency_size
-      attr_accessor :model_attrs
-
-      def initialize(bind_params)
-        @dependency_size = 0
-        @model_attrs = Hash.new do |models, model|
-          models[model] = Set.new
-        end
-
-        # An aggregated bind_params node can only obtain params by combining
-        # its children nodes
-        return if !bind_params.__send__(:opt).nil?
-
-        bind_params.params.each do |model, attrs_set|
-          @dependency_size += attrs_set.size
-          attrs_set.each do |attrs|
-            @model_attrs[model] << attrs.keys.map { |k| [k, nil] }.to_h
-          end
-        end
       end
     end
   end
