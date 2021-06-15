@@ -113,12 +113,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
       memoize_method(
         :exec_query,
-        method_id: proc do |_, sql, *_args|
-          # replace $1 with ?,
-          # and (?, ?, ? ...) with (?)
-          sql.gsub(/(\$\d+)/, '?')
-             .gsub(/((, *)*\?)+/, '?')
-        end,
+        method_id: proc { |_, sql, *| RedisMemo::Util.tagify_parameterized_sql(sql) },
       ) do |_, sql, _, binds, **|
         depends_on RedisMemo::MemoizeQuery::CachedSelect.current_query_bind_params
 
@@ -161,13 +156,17 @@ class RedisMemo::MemoizeQuery::CachedSelect
   end
 
   # Extract bind params from the query by inspecting the SQL's AST recursively
-  # The bind params will be passed into the local thread variables
-  # See +construct_bind_params_recurse+ for how to extract binding params recursively
+  # The bind params will be passed into the local thread variables See
+  # +construct_bind_params_recurse+ for how to construct binding params
+  # recursively.
   #
   # @param sql [String] SQL query
   # @return [Boolean] indicating whether a query should be cached
   def self.extract_bind_params(sql)
-    RedisMemo::Tracer.trace('redis_memo.memoize_query.extract_bind_params', nil) do
+    RedisMemo::Tracer.trace(
+      'redis_memo.memoize_query.extract_bind_params',
+      RedisMemo::Util.tagify_parameterized_sql(sql),
+    ) do
       ast = RedisMemo::ThreadLocalVar.arel&.ast
       return false unless ast.is_a?(Arel::Nodes::SelectStatement)
       return false unless ast.to_sql == sql

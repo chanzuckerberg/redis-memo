@@ -13,6 +13,12 @@ module RedisMemo::Util
     end
   end
 
+  def self.tagify_parameterized_sql(sql)
+    # replace $1 with ?,
+    # and (?, ?, ? ...) with (?)
+    sql.gsub(/(\$\d+)/, '?').gsub(/((, *)*\?)+/, '?')
+  end
+
   def self.uuid
     SecureRandom.uuid
   end
