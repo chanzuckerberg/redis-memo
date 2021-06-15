@@ -162,7 +162,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
   # Extract bind params from the query by inspecting the SQL's AST recursively
   # The bind params will be passed into the local thread variables
-  # See +extract_bind_params_recurse+ for how to extract binding params recursively
+  # See +construct_bind_params_recurse+ for how to extract binding params recursively
   #
   # @param sql [String] SQL query
   # @return [Boolean] indicating whether a query should be cached
@@ -174,7 +174,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
       RedisMemo::ThreadLocalVar.substitues ||= {}
       # Iterate through the Arel AST in a Depth First Search
-      bind_params = extract_bind_params_recurse(ast)
+      bind_params = construct_bind_params_recurse(ast)
       return false unless bind_params&.should_cache?
 
       bind_params.extract!
@@ -222,7 +222,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   # @param node [Arel::Nodes::Node]
   #
   # @return [RedisMemo::MemoizeQuery::CachedSelect::BindParams]
-  def self.extract_bind_params_recurse(node)
+  def self.construct_bind_params_recurse(node)
     # rubocop: disable Lint/NonLocalExitFromIterator
     bind_params = BindParams.new
 
@@ -273,7 +273,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
               end,
           }
         else
-          bind_params = bind_params.union(extract_bind_params_recurse(right))
+          bind_params = bind_params.union(construct_bind_params_recurse(right))
           return if !bind_params
         end
       end
@@ -294,7 +294,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
           return if core.wheres.empty? || binding_relation.nil?
         when Arel::Nodes::TableAlias
           bind_params = bind_params.union(
-            extract_bind_params_recurse(source_node.left),
+            construct_bind_params_recurse(source_node.left),
           )
 
           return unless bind_params
@@ -305,7 +305,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
         # Binds wheres before havings
         core.wheres.each do |where|
           bind_params = bind_params.union(
-            extract_bind_params_recurse(where),
+            construct_bind_params_recurse(where),
           )
 
           return unless bind_params
@@ -313,7 +313,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
 
         core.havings.each do |having|
           bind_params = bind_params.union(
-            extract_bind_params_recurse(having),
+            construct_bind_params_recurse(having),
           )
 
           return unless bind_params
@@ -323,13 +323,13 @@ class RedisMemo::MemoizeQuery::CachedSelect
       bind_params
     when Arel::Nodes::Grouping
       # Inline SQL
-      extract_bind_params_recurse(node.expr)
+      construct_bind_params_recurse(node.expr)
     when Arel::Nodes::LessThan, Arel::Nodes::LessThanOrEqual, Arel::Nodes::GreaterThan, Arel::Nodes::GreaterThanOrEqual, Arel::Nodes::NotEqual
       bind_params
     when Arel::Nodes::And
       node.children.each do |child|
         bind_params = bind_params.product(
-          extract_bind_params_recurse(child),
+          construct_bind_params_recurse(child),
         )
 
         return unless bind_params
@@ -339,7 +339,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
     when Arel::Nodes::Union, Arel::Nodes::Or
       [node.left, node.right].each do |child|
         bind_params = bind_params.union(
-          extract_bind_params_recurse(child),
+          construct_bind_params_recurse(child),
         )
 
         return unless bind_params
