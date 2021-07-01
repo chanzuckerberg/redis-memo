@@ -15,14 +15,23 @@ class RedisMemo::MemoizeQuery::CachedSelect
       # An Arel AST in Thread local is set prior to supported query methods
       if !RedisMemo.without_memoization? &&
           RedisMemo::MemoizeQuery::CachedSelect.extract_bind_params(args[0])
+
+        time_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        ret = super(*args)
+        time_end = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
         # [Reids $model Load] $sql $binds
-        RedisMemo::DefaultOptions.logger&.info(
-          "[Redis] \u001b[36;1m#{args[1]} \u001b[34;1m#{args[0]}\u001b[0m #{
-            args[2].map { |bind| [bind.name, bind.value_for_database] }
+        RedisMemo::DefaultOptions.logger&.debug(
+          "[Redis] \u001b[36;1m#{
+            args[1] || 'SQL' # model name
+          } (#{format('%.1f', (time_end - time_start) * 1000.0)}ms)  \u001b[34;1m#{
+            args[0] # sql
+          }\u001b[0m #{
+            args[2].map { |bind| [bind.name, bind.value_for_database] } # binds
           }",
         )
 
-        super(*args)
+        ret
       else
         RedisMemo.without_memoization { super(*args) }
       end
