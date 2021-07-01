@@ -76,101 +76,6 @@ class RedisMemo::MemoizeQuery::CachedSelect
     attr_accessor :left
     attr_accessor :right
     attr_accessor :operator
-
-    # Prior to actually extracting the bind parameters, we first quickly
-    # estimate if it makes sense to do so. If a query contains too many
-    # dependencies, or contains dependencies that have not been memoized, then
-    # the query itself cannot be cached correctly/efficiently, so there’s no
-    # point to actually extract.
-    #
-    # The planning phase is similar to the extraction phase. Though in the
-    # planning phase, we can ignore all the actual attribute values and only
-    # look at the attribute names. This way, we can compute the attribute names
-    # for each set of dependencies without populating their actual values.
-    #
-    # For example, in the planning phase,
-    #
-    #   {a:nil} x {b: nil} => {a: nil, b: nil}
-    #   {a:nil, b:nil} x {a: nil: b: nil} => {a: nil, b: nil}
-    #
-    # and in the extraction phase, that's where the # of dependency can
-    # actually grow significantly:
-    #
-    #   {a: [1,2,3]} x {b: [1,2,3]} => [{a: 1, b: 1}, ....]
-    #   {a:[1,2], b:[1,2]} x {a: [1,2,3]: b: [1,2,3]} => [{a: 1, b: 1}, ...]
-    #
-    class Plan
-      class DependencySizeEstimation
-        def initialize(hash = nil)
-          @hash = hash
-        end
-
-        def +(other)
-          merged_hash = hash.dup
-          other.hash.each do |k, v|
-            merged_hash[k] += v
-          end
-          self.class.new(merged_hash)
-        end
-
-        def *(other)
-          merged_hash = hash.dup
-          other.hash.each do |k, v|
-            if merged_hash.include?(k)
-              merged_hash[k] *= v
-            else
-              merged_hash[k] = v
-            end
-          end
-          self.class.new(merged_hash)
-        end
-
-        def [](key)
-          hash[key]
-        end
-
-        def []=(key, val)
-          hash[key] = val
-        end
-
-        def to_i
-          ret = 0
-          hash.each do |_, v|
-            ret += v
-          end
-          ret
-        end
-
-        protected
-
-        def hash
-          @hash ||= Hash.new(0)
-        end
-      end
-
-      attr_accessor :dependency_size_estimation
-      attr_accessor :model_attrs
-
-      def initialize(bind_params)
-        @dependency_size_estimation = DependencySizeEstimation.new
-        @model_attrs = Hash.new do |models, model|
-          models[model] = Set.new
-        end
-
-        # An aggregated bind_params node can only obtain params by combining
-        # its children nodes
-        return if !bind_params.__send__(:operator).nil?
-
-        bind_params.params.each do |model, attrs_set|
-          @dependency_size_estimation[model] += attrs_set.size
-          attrs_set.each do |attrs|
-            # [k, nil]: Ignore the attr value and keep the name only
-            @model_attrs[model] << attrs.keys.map { |k| [k, nil] }.to_h
-          end
-        end
-      end
-    end
-
     attr_accessor :plan
 
     def plan!
@@ -254,6 +159,100 @@ class RedisMemo::MemoizeQuery::CachedSelect
         end
 
         merged_attrs_set
+      end
+    end
+
+    # Prior to actually extracting the bind parameters, we first quickly
+    # estimate if it makes sense to do so. If a query contains too many
+    # dependencies, or contains dependencies that have not been memoized, then
+    # the query itself cannot be cached correctly/efficiently, so there’s no
+    # point to actually extract.
+    #
+    # The planning phase is similar to the extraction phase. Though in the
+    # planning phase, we can ignore all the actual attribute values and only
+    # look at the attribute names. This way, we can precompute the dependency
+    # size without populating their actual values.
+    #
+    # For example, in the planning phase,
+    #
+    #   {a:nil} x {b: nil} => {a: nil, b: nil}
+    #   {a:nil, b:nil} x {a: nil: b: nil} => {a: nil, b: nil}
+    #
+    # and in the extraction phase, that's where the # of dependency can
+    # actually grow significantly:
+    #
+    #   {a: [1,2,3]} x {b: [1,2,3]} => [{a: 1, b: 1}, ....]
+    #   {a:[1,2], b:[1,2]} x {a: [1,2,3]: b: [1,2,3]} => [{a: 1, b: 1}, ...]
+    #
+    class Plan
+      class DependencySizeEstimation
+        def initialize(hash = nil)
+          @hash = hash
+        end
+
+        def +(other)
+          merged_hash = hash.dup
+          other.hash.each do |k, v|
+            merged_hash[k] += v
+          end
+          self.class.new(merged_hash)
+        end
+
+        def *(other)
+          merged_hash = hash.dup
+          other.hash.each do |k, v|
+            if merged_hash.include?(k)
+              merged_hash[k] *= v
+            else
+              merged_hash[k] = v
+            end
+          end
+          self.class.new(merged_hash)
+        end
+
+        def [](key)
+          hash[key]
+        end
+
+        def []=(key, val)
+          hash[key] = val
+        end
+
+        def to_i
+          ret = 0
+          hash.each do |_, v|
+            ret += v
+          end
+          ret
+        end
+
+        protected
+
+        def hash
+          @hash ||= Hash.new(0)
+        end
+      end
+
+      attr_accessor :dependency_size_estimation
+      attr_accessor :model_attrs
+
+      def initialize(bind_params)
+        @dependency_size_estimation = DependencySizeEstimation.new
+        @model_attrs = Hash.new do |models, model|
+          models[model] = Set.new
+        end
+
+        # An aggregated bind_params node can only obtain params by combining
+        # its children nodes
+        return if !bind_params.__send__(:operator).nil?
+
+        bind_params.params.each do |model, attrs_set|
+          @dependency_size_estimation[model] += attrs_set.size
+          attrs_set.each do |attrs|
+            # [k, nil]: Ignore the attr value and keep the name only
+            @model_attrs[model] << attrs.keys.map { |k| [k, nil] }.to_h
+          end
+        end
       end
     end
   end

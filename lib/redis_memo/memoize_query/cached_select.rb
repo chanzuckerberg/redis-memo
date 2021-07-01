@@ -156,7 +156,7 @@ class RedisMemo::MemoizeQuery::CachedSelect
   end
 
   # Extract bind params from the query by inspecting the SQL's AST recursively
-  # The bind params will be passed into the local thread variables See
+  # The bind params will be passed into the local thread variables. See
   # +construct_bind_params_recurse+ for how to construct binding params
   # recursively.
   #

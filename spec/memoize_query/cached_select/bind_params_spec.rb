@@ -27,7 +27,29 @@ RSpec.describe RedisMemo::MemoizeQuery::CachedSelect::BindParams do
     expect(bp.params[1].to_a).to eq([{ a: 1, b: 2 }])
   end
 
+  it 'ignores empty models' do
+    # first union
+    left = described_class.new
+    right = described_class.new
+
+    bp = left.union(right)
+    bp.extract!
+    expect(bp.params.empty?).to be(true)
+
+    left.params[1] << { a: 1 }
+    bp = left.union(right)
+    bp.extract!
+    expect(bp.params[1].to_a).to eq([{ a: 1 }])
+
+    right.params[0] << { b: 2 }
+    bp = left.union(right)
+    bp.extract!
+    expect(bp.params[0].to_a).to eq([{ b: 2 }])
+    expect(bp.params[1].to_a).to eq([{ a: 1 }])
+  end
+
   it 'excludes conflict query conditions' do
+    # first union
     left = described_class.new
     left.params[1] << { a: 1 }
     left.params[1] << { b: 1 }
@@ -36,6 +58,7 @@ RSpec.describe RedisMemo::MemoizeQuery::CachedSelect::BindParams do
     right.params[1] << { a: 2 }
     right.params[1] << { b: 2 }
 
+    # then product
     bp = left.product(right)
     bp.extract!
     expect(bp.params[1].to_a).to eq([{ b: 2, a: 1 }, { a: 2, b: 1 }])
