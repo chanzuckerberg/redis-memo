@@ -30,7 +30,6 @@ class RedisMemo::Memoizable::Dependency
       extracted = self.class.extract_from_relation(dependency)
       nodes.merge!(extracted.nodes)
     when RedisMemo::MemoizeQuery::CachedSelect::BindParams
-      # A private API
       dependency.params.each do |model, attrs_set|
         memo = model.redis_memo_class_memoizable
         nodes[memo.cache_key] = memo

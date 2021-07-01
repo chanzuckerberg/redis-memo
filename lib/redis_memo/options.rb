@@ -19,6 +19,7 @@ class RedisMemo::Options
     global_cache_key_version: nil,
     expires_in: nil,
     max_connection_attempts: nil,
+    max_query_dependency_size: 5000,
     disable_all: false,
     disable_cached_select: false,
     disabled_models: Set.new
@@ -34,6 +35,7 @@ class RedisMemo::Options
     @global_cache_key_version = global_cache_key_version
     @expires_in = expires_in
     @max_connection_attempts = ENV['REDIS_MEMO_MAX_ATTEMPTS_PER_REQUEST']&.to_i || max_connection_attempts
+    @max_query_dependency_size = ENV['REDIS_MEMO_MAX_QUERY_DEPENDENCY_SIZE']&.to_i || max_query_dependency_size
     @disable_all = ENV['REDIS_MEMO_DISABLE_ALL'] == 'true' || disable_all
     @disable_cached_select = ENV['REDIS_MEMO_DISABLE_CACHED_SELECT'] == 'true' || disable_cached_select
     @disabled_models = disabled_models
@@ -161,6 +163,9 @@ class RedisMemo::Options
   # the caching layer. This helps make RedisMemo resilient to errors and performance issues when there's
   # an issue with the Redis cluster itself.
   attr_accessor :max_connection_attempts
+
+  # Only cache a SQL query when the max number of dependency is smaller or equal to this number. Configurable via an ENV var REDIS_MEMO_MAX_QUERY_DEPENDENCY_SIZE. Default at 5000.
+  attr_accessor :max_query_dependency_size
 
   # Passed along to the Rails {RedisCacheStore}[https://api.rubyonrails.org/classes/ActiveSupport/Cache/RedisCacheStore.html], the error handler called for Redis related errors.
   attr_accessor :redis_error_handler
