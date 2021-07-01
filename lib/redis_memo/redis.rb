@@ -17,12 +17,10 @@ class RedisMemo::Redis < Redis::Distributed
           if option.is_a?(Array)
             RedisMemo::Redis::WithReplicas.new(option)
           else
-            option[:logger] ||= RedisMemo::DefaultOptions.logger
             ::Redis.new(option)
           end
         end
       else
-        options[:logger] ||= RedisMemo::DefaultOptions.logger
         [::Redis.new(options)]
       end
 
@@ -49,11 +47,9 @@ class RedisMemo::Redis < Redis::Distributed
       options = orig_options.dup
       primary_option = options.shift
       @replicas = options.map do |option|
-        option[:logger] ||= RedisMemo::DefaultOptions.logger
         ::Redis.new(option)
       end
 
-      primary_option[:logger] ||= RedisMemo::DefaultOptions.logger
       super(primary_option)
     end
 
