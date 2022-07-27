@@ -3,6 +3,7 @@ AllCops:
   DisabledByDefault: true
   SuggestExtensions:
     rubocop-rake: false
+  TargetRubyVersion: 2.5
 
 inherit_from:
   - bundler.yml

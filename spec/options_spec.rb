@@ -1,4 +1,5 @@
 # typed: false
+
 describe RedisMemo::Options do
   context 'cache validation' do
     def allow_rand_return(value)

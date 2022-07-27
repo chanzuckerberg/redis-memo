@@ -1,4 +1,5 @@
 # typed: false
+
 describe RedisMemo::Batch do
   it 'loads memoized methods in batch' do
     memo = RedisMemo::Memoizable.new(id: 'test')

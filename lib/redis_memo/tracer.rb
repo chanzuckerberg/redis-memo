@@ -3,12 +3,12 @@
 require_relative 'options'
 
 class RedisMemo::Tracer
-  def self.trace(span_name, method_id, &blk)
+  def self.trace(span_name, method_id)
     tracer = RedisMemo::DefaultOptions.tracer
-    return blk.call if tracer.nil?
+    return yield if tracer.nil?
 
     tracer.trace(span_name, resource: method_id, service: 'redis_memo') do
-      blk.call
+      yield
     end
   end
 

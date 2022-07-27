@@ -33,8 +33,8 @@ module RedisMemo
   # @yieldparam [RedisMemo::Options] default_options
   # +RedisMemo::DefaultOptions+
   # @return [void]
-  def self.configure(&blk)
-    blk.call(DefaultOptions)
+  def self.configure
+    yield(DefaultOptions)
   end
 
   # Batch Redis calls triggered by +memoize_method+ to minimize the round trips
@@ -54,9 +54,9 @@ module RedisMemo
   #   results.size == 5 # true
   #
   # See +RedisMemo::Batch+ for more information.
-  def self.batch(&blk)
+  def self.batch
     RedisMemo::Batch.open
-    blk.call
+    yield
     RedisMemo::Batch.execute
   ensure
     RedisMemo::Batch.close
