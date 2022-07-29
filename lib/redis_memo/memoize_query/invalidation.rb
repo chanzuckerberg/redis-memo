@@ -87,9 +87,9 @@ class RedisMemo::MemoizeQuery::Invalidation
     model_class.class_variable_set(var_name, true)
   end
 
-  def self.invalidate_new_records(model_class)
+  def self.invalidate_new_records(model_class, &blk)
     current_id = model_class.maximum(model_class.primary_key)
-    result = yield
+    result = blk.call
     records = select_by_new_ids(model_class, current_id)
     RedisMemo::MemoizeQuery.invalidate(*records) unless records.empty?
     result
@@ -108,7 +108,7 @@ class RedisMemo::MemoizeQuery::Invalidation
     RedisMemo::MemoizeQuery.invalidate(*records) unless records.empty?
 
     # Perform updating
-    result = yield
+    result = blk.call
 
     # Invalidate records after updating
     records = select_by_conflict_target_relation(model_class, relation)
