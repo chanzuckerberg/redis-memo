@@ -58,6 +58,7 @@ jobs:
         PGPORT: 5432
         PGUSER: postgres
         PGPASSWORD: postgres
+        RSPEC_DB_PASSWORD: postgres
       run: bundle exec rake db:postgresql:reset test:postgresql
     - name: Upload to Codecov
       uses: codecov/codecov-action@v3

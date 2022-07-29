@@ -18,7 +18,7 @@ RSpec.configure do |config|
       adapter: ENV['RSPEC_DB_ADAPTER'] || 'postgresql',
       host: 'localhost',
       username: ENV['RSPEC_DB_USERNAME'] || 'postgres',
-      password: ENV['RSPEC_DB_PASSWORD'] || 'postgres',
+      password: ENV['RSPEC_DB_PASSWORD'] || '',
       database: 'redis_memo_test',
     )
   end
