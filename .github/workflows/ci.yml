@@ -53,6 +53,11 @@ jobs:
       run: BUNDLE_GEMFILE="${GITHUB_WORKSPACE}/${MATRIX_GEM_FILE}" bundle install
     - run: bundle exec rubocop
     - name: Rake Test
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
       run: bundle exec rake db:postgresql:reset test:postgresql
     - name: Upload to Codecov
       uses: codecov/codecov-action@v3
