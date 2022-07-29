@@ -58,7 +58,7 @@ namespace :db do
 
     desc 'drop PostgreSQL database'
     task :drop do
-      sh 'psql -d postgres -U postgres -c "DROP DATABASE IF EXISTS redis_memo_test"'
+      sh 'psql -U postgres -h localhost -c "DROP DATABASE IF EXISTS redis_memo_test"'
     end
   end
 end
