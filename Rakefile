@@ -53,6 +53,7 @@ namespace :db do
 
     desc 'create PostgreSQL database'
     task :create do
+      # sh 'psql postgres://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE redis_memo_test"'
       sh 'createdb -U postgres redis_memo_test'
     end
 
