@@ -53,13 +53,12 @@ namespace :db do
 
     desc 'create PostgreSQL database'
     task :create do
-      # sh 'psql postgres://postgres:postgres@localhost:5432/postgres -c "CREATE DATABASE redis_memo_test"'
       sh 'createdb -U postgres redis_memo_test'
     end
 
     desc 'drop PostgreSQL database'
     task :drop do
-      sh 'psql postgres://postgres:postgres@localhost:5432/postgres "DROP DATABASE IF EXISTS redis_memo_test"'
+      sh 'psql -d postgres -U postgres -c "DROP DATABASE IF EXISTS redis_memo_test"'
     end
   end
 end
