@@ -19,7 +19,18 @@ jobs:
         - gemfiles/6.0.gemfile
         - gemfiles/6.1.gemfile
         - gemfiles/head.gemfile
-
+        # a hack to allow tests to fail for ruby-head, https://github.com/actions/toolkit/issues/399
+        include:
+          - ruby: 'ruby-head'
+            experimental: true
+          - gemfile: 'gemfiles/head.gemfile'
+            experimental: true
+          - ruby: 3.0
+            gemfile: 'gemfiles/5.2.gemfile'
+            experimental: true
+          - ruby: 3.0
+            gemfile: 'gemfiles/6.0.gemfile'
+            experimental: true
     services:
       redis:
         image: redis:6-alpine
@@ -59,7 +70,7 @@ jobs:
         PGUSER: postgres
         PGPASSWORD: postgres
         RSPEC_DB_PASSWORD: postgres
-      run: bundle exec rake db:postgresql:reset test:postgresql
+      run: bundle exec rake db:postgresql:reset test:postgresql || ${{ matrix.experimental == true }} # the eq forces a boolean instead of an empty string
     - name: Upload to Codecov
       uses: codecov/codecov-action@v3
       with:
