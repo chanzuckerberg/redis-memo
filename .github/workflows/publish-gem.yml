@@ -1,21 +1,19 @@
 name: Create and publish redis-memo
 
-# see: https://github.com/chanzuckerberg/redcord/blob/master/.github/workflows/publish.yml
-
 on:
   release:
     types: [published]
+  workflow_dispatch:
+
 jobs:
-  publish-gem:
+  build:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: "${{secrets.GITHUB_TOKEN}}"
-      RUBYGEMS_API_KEY: "${{secrets.RUBYGEMS_API_KEY}}"
     steps:
       - uses: actions/checkout@v2
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: 2.7
-      - name: Publish gems to package repositry
-        run: |
-          ./bin/publish-gem.sh
+      - name: Release Gem
+        uses: dawidd6/action-publish-gem@v1
+        with:
+          api_key: ${{secrets.RUBYGEMS_API_KEY}}
