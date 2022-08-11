@@ -224,7 +224,7 @@ module RedisMemo::MemoizeMethod
         if i >= num_positional_args_before_splat && i < after_splat_index
           positional_args << arg if named_splat
         else
-          j = i < num_positional_args_before_splat ? i : i - (after_splat_index - splat_index) - 1
+          j = (i < num_positional_args_before_splat) ? i : i - (after_splat_index - splat_index) - 1
           positional_args << arg if is_named?(depends_on.parameters[j])
         end
       end
