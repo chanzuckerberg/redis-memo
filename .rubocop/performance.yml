@@ -53,7 +53,7 @@ Performance/RangeInclude:
   Enabled: true
 
 Performance/RedundantBlockCall:
-  Enabled: true
+  Enabled: false
 
 Performance/RedundantMatch:
   Enabled: true

@@ -1,4 +1,5 @@
 # typed: false
+
 describe RedisMemo::Redis do
   before(:each) do
     stub_const('FakeClient', Class.new do

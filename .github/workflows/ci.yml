@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+    branches: # Trigger only on the main branch to avoid duplicate runs on PR branches
+      - main
+  pull_request: # Trigger All PRs
+
+jobs:
+  rspec:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby: [2.5, 2.6, 2.7, 3.0, ruby-head]
+        gemfile:
+        - gemfiles/5.2.gemfile
+        - gemfiles/6.0.gemfile
+        - gemfiles/6.1.gemfile
+        - gemfiles/head.gemfile
+        # a hack to allow tests to fail for ruby-head, https://github.com/actions/toolkit/issues/399
+        include:
+          - ruby: 'ruby-head'
+            experimental: true
+          - gemfile: 'gemfiles/head.gemfile'
+            experimental: true
+          - ruby: 3.0
+            gemfile: 'gemfiles/5.2.gemfile'
+            experimental: true
+          - ruby: 3.0
+            gemfile: 'gemfiles/6.0.gemfile'
+            experimental: true
+    services:
+      redis:
+        image: redis:6-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli GET 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.ruby }}
+    - name: Install gems
+      env:
+        MATRIX_GEM_FILE: ${{ matrix.gemfile }}
+      run: BUNDLE_GEMFILE="${GITHUB_WORKSPACE}/${MATRIX_GEM_FILE}" bundle install
+    - run: bundle exec rubocop
+    - name: Rake Test
+      env:
+        PGHOST: localhost
+        PGPORT: 5432
+        PGUSER: postgres
+        PGPASSWORD: postgres
+        RSPEC_DB_PASSWORD: postgres
+      run: bundle exec rake db:postgresql:reset test:postgresql || ${{ matrix.experimental == true }} # the eq forces a boolean instead of an empty string
+    - name: Upload to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: coverage/coverage.xml

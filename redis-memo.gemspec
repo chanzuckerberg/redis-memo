@@ -12,7 +12,7 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
   s.files         = Dir.glob('lib/**/*')
 
-  s.required_ruby_version = ['>= 2.5.0']
+  s.required_ruby_version = '>= 2.5'
 
   s.add_dependency 'activesupport', '>= 5.2'
   s.add_dependency 'connection_pool', '>= 2.2.3'
@@ -21,7 +21,6 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'activerecord', '>= 5.2'
   s.add_development_dependency 'activerecord-import'
-  s.add_development_dependency 'codecov'
   s.add_development_dependency 'database_cleaner-active_record'
   s.add_development_dependency 'pg'
   s.add_development_dependency 'railties', '>= 5.2'
@@ -31,4 +30,5 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rubocop-performance'
   s.add_development_dependency 'rubocop-rspec'
   s.add_development_dependency 'simplecov'
+  s.add_development_dependency 'simplecov-cobertura'
 end
